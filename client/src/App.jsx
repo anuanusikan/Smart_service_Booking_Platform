@@ -1,20 +1,24 @@
-import { useState, useEffect } from 'react';
+import { Routes, Route, Link } from 'react-router-dom';
+import Register from './pages/Register';
+import Login from './pages/Login';
 
-function App() {
-  const [message, setMessage] = useState('Loading...');
-
-  useEffect(() => {
-    fetch('http://localhost:5000/api/test')
-      .then(res => res.json())
-      .then(data => setMessage(data.message))
-      .catch(() => setMessage('Failed to connect to server'));
-  }, []);
-
+function Home() {
   return (
     <div>
       <h1>SkillLink</h1>
-      <p>Backend says: {message}</p>
+      <p>Welcome to SkillLink — find trusted service providers near you.</p>
+      <Link to="/register">Register</Link> | <Link to="/login">Login</Link>
     </div>
+  );
+}
+
+function App() {
+  return (
+    <Routes>
+      <Route path="/" element={<Home />} />
+      <Route path="/register" element={<Register />} />
+      <Route path="/login" element={<Login />} />
+    </Routes>
   );
 }
 
