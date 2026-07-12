@@ -43,7 +43,7 @@ function Register() {
   return (
     <div className="container">
       <div className="card">
-      <h2>Register for SkillLink</h2>
+      <h2>Register for ServiceSync</h2>
       <form onSubmit={handleSubmit}>
         <input
           type="text"

@@ -42,7 +42,7 @@ function Login() {
   return (
     <div className="container">
       <div className="card">
-      <h2>Login to SkillLink</h2>
+      <h2>Login to ServiceSync</h2>
       <form onSubmit={handleSubmit}>
         <input
           type="email"

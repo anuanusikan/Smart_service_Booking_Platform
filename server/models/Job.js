@@ -30,6 +30,10 @@ const jobSchema = new mongoose.Schema({
     type: String,
     enum: ['open', 'assigned', 'completed'],
     default: 'open'
+  },
+  images: {
+    type: [String],
+    default: []
   }
 }, { timestamps: true });
 

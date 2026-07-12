@@ -1,3 +1,7 @@
+const multer = require('multer');
+const { storage } = require('../config/cloudinary');
+
+const upload = multer({ storage });
 const express = require('express');
 const Job = require('../models/Job');
 const authMiddleware = require('../middleware/auth');
@@ -5,14 +9,15 @@ const authMiddleware = require('../middleware/auth');
 const router = express.Router();
 
 // CREATE a job (protected — must be logged in)
-router.post('/', authMiddleware, async (req, res) => {
+router.post('/', authMiddleware, upload.array('images', 3), async (req, res) => {
   try {
-    // Only customers should be able to post jobs
     if (req.user.role !== 'customer') {
       return res.status(403).json({ message: 'Only customers can post jobs' });
     }
 
     const { title, description, category, location, budget } = req.body;
+
+    const imageUrls = req.files ? req.files.map(file => file.path) : [];
 
     const newJob = new Job({
       title,
@@ -20,7 +25,8 @@ router.post('/', authMiddleware, async (req, res) => {
       category,
       location,
       budget,
-      postedBy: req.user.id
+      postedBy: req.user.id,
+      images: imageUrls
     });
 
     await newJob.save();
@@ -34,7 +40,7 @@ router.post('/', authMiddleware, async (req, res) => {
 // GET all jobs (public — anyone can browse)
 router.get('/', async (req, res) => {
   try {
-    const jobs = await Job.find().populate('postedBy', 'name email location');
+    const jobs = await Job.find({ status: 'open' }).populate('postedBy', 'location');
     res.json(jobs);
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
@@ -75,6 +81,20 @@ router.get('/matched', authMiddleware, async (req, res) => {
     scoredJobs.sort((a, b) => b.matchScore - a.matchScore);
 
     res.json(scoredJobs);
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
+// GET jobs posted by the logged-in customer
+router.get('/mine', authMiddleware, async (req, res) => {
+  try {
+    if (req.user.role !== 'customer') {
+      return res.status(403).json({ message: 'Only customers can view their posted jobs' });
+    }
+
+    const jobs = await Job.find({ postedBy: req.user.id }).sort({ createdAt: -1 });
+    res.json(jobs);
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
