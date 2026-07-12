@@ -41,7 +41,8 @@ function Register() {
   };
 
   return (
-    <div style={{ maxWidth: '400px', margin: '50px auto' }}>
+    <div className="container">
+      <div className="card">
       <h2>Register for SkillLink</h2>
       <form onSubmit={handleSubmit}>
         <input
@@ -90,6 +91,7 @@ function Register() {
       {message && <p>{message}</p>}
 
       <p>Already have an account? <Link to="/login">Login here</Link></p>
+    </div>
     </div>
   );
 }

@@ -40,7 +40,8 @@ function Login() {
   };
 
   return (
-    <div style={{ maxWidth: '400px', margin: '50px auto' }}>
+    <div className="container">
+      <div className="card">
       <h2>Login to SkillLink</h2>
       <form onSubmit={handleSubmit}>
         <input
@@ -67,6 +68,7 @@ function Login() {
       {message && <p>{message}</p>}
 
       <p>Don't have an account? <Link to="/register">Register here</Link></p>
+    </div>
     </div>
   );
 }

@@ -43,23 +43,23 @@ function BrowseJobs() {
   if (loading) return <p>Loading jobs...</p>;
 
   return (
-    <div style={{ maxWidth: '600px', margin: '50px auto' }}>
+    <div className="job-list">
       <h2>Browse Jobs</h2>
       {message && <p><b>{message}</b></p>}
       {jobs.length === 0 && <p>No jobs posted yet.</p>}
 
       {jobs.map((job) => (
-        <div key={job._id} style={{ border: '1px solid #ccc', padding: '15px', marginBottom: '15px' }}>
-          <h3>{job.title}</h3>
+        <div key={job._id} className="card">
+          <span className={`status-badge status-${job.status}`}>{job.status}</span>
+          <h3 style={{ marginTop: '10px' }}>{job.title}</h3>
           <p>{job.description}</p>
-          <p><b>Category:</b> {job.category}</p>
-          <p><b>Location:</b> {job.location}</p>
-          <p><b>Budget:</b> Rs. {job.budget}</p>
-          <p><b>Posted by:</b> {job.postedBy?.name}</p>
-          <p><b>Status:</b> {job.status}</p>
+          <p className="meta"><b>Category:</b> {job.category}</p>
+          <p className="meta"><b>Location:</b> {job.location}</p>
+          <p className="meta"><b>Budget:</b> Rs. {job.budget}</p>
+          <p className="meta"><b>Posted by:</b> {job.postedBy?.name}</p>
 
           {user?.role === 'provider' && job.status === 'open' && (
-            <button onClick={() => handleRequest(job._id)}>Request This Job</button>
+            <button onClick={() => handleRequest(job._id)} style={{ marginTop: '10px' }}>Request This Job</button>
           )}
         </div>
       ))}

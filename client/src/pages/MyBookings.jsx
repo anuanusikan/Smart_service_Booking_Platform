@@ -51,29 +51,29 @@ function MyBookings() {
   if (loading) return <p>Loading bookings...</p>;
 
   return (
-    <div style={{ maxWidth: '600px', margin: '50px auto' }}>
-      <h2>My Bookings ({user?.role})</h2>
+    <div className="job-list">
+      <h2>My Bookings <span style={{ fontSize: '14px', color: '#375056' }}>({user?.role})</span></h2>
       {message && <p><b>{message}</b></p>}
       {bookings.length === 0 && <p>No bookings yet.</p>}
 
       {bookings.map((booking) => (
-        <div key={booking._id} style={{ border: '1px solid #ccc', padding: '15px', marginBottom: '15px' }}>
-          <h3>{booking.job?.title}</h3>
+        <div key={booking._id} className="card">
+          <span className={`status-badge status-${booking.status}`}>{booking.status}</span>
+          <h3 style={{ marginTop: '10px' }}>{booking.job?.title}</h3>
           <p>{booking.job?.description}</p>
-          <p><b>Status:</b> {booking.status}</p>
 
           {user?.role === 'provider' && (
-            <p><b>Customer:</b> {booking.customer?.name} ({booking.customer?.email})</p>
+            <p className="meta"><b>Customer:</b> {booking.customer?.name} ({booking.customer?.email})</p>
           )}
 
           {user?.role === 'customer' && (
             <>
-              <p><b>Provider:</b> {booking.provider?.name} ({booking.provider?.email})</p>
+              <p className="meta"><b>Provider:</b> {booking.provider?.name} ({booking.provider?.email})</p>
               {booking.status === 'pending' && (
-                <div>
+                <div style={{ marginTop: '10px' }}>
                   <button onClick={() => handleAction(booking._id, 'accepted')}>Accept</button>
                   {' '}
-                  <button onClick={() => handleAction(booking._id, 'declined')}>Decline</button>
+                  <button onClick={() => handleAction(booking._id, 'declined')} style={{ background: '#B5453A' }}>Decline</button>
                 </div>
               )}
             </>
