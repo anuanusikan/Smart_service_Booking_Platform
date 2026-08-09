@@ -58,7 +58,7 @@ router.get('/mine', authMiddleware, async (req, res) => {
 // CUSTOMER accepts or declines a booking
 router.put('/:id', authMiddleware, async (req, res) => {
   try {
-    const { status } = req.body; // "accepted" or "declined"
+    const { status } = req.body; // "accepted", "declined", or "completed"
 
     const booking = await Booking.findById(req.params.id);
     if (!booking) {
@@ -69,15 +69,72 @@ router.put('/:id', authMiddleware, async (req, res) => {
       return res.status(403).json({ message: 'Not authorized to update this booking' });
     }
 
+    if (status === 'completed' && booking.status !== 'accepted') {
+      return res.status(400).json({ message: 'Only accepted bookings can be marked completed' });
+    }
+
     booking.status = status;
     await booking.save();
 
-    // If accepted, mark the job as assigned
     if (status === 'accepted') {
       await Job.findByIdAndUpdate(booking.job, { status: 'assigned' });
     }
 
+    if (status === 'completed') {
+      await Job.findByIdAndUpdate(booking.job, { status: 'completed' });
+    }
+
     res.json({ message: `Booking ${status}`, booking });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
+// PROVIDER cancels their own pending request
+router.delete('/:id/cancel', authMiddleware, async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) {
+      return res.status(404).json({ message: 'Booking not found' });
+    }
+
+    if (booking.provider.toString() !== req.user.id) {
+      return res.status(403).json({ message: 'Not authorized to cancel this booking' });
+    }
+
+    if (booking.status !== 'pending') {
+      return res.status(400).json({ message: 'Only pending requests can be cancelled' });
+    }
+
+    await Booking.findByIdAndDelete(req.params.id);
+    res.json({ message: 'Request cancelled' });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
+// Either party deletes a finished (declined/completed) booking from their history
+router.delete('/:id', authMiddleware, async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) {
+      return res.status(404).json({ message: 'Booking not found' });
+    }
+
+    const isParty =
+      booking.customer.toString() === req.user.id ||
+      booking.provider.toString() === req.user.id;
+
+    if (!isParty) {
+      return res.status(403).json({ message: 'Not authorized to delete this booking' });
+    }
+
+    if (!['declined', 'completed'].includes(booking.status)) {
+      return res.status(400).json({ message: 'Only declined or completed bookings can be removed' });
+    }
+
+    await Booking.findByIdAndDelete(req.params.id);
+    res.json({ message: 'Booking removed from history' });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }

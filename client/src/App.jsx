@@ -5,6 +5,7 @@ import PostJob from './pages/PostJob';
 import BrowseJobs from './pages/BrowseJobs';
 import MyBookings from './pages/MyBookings';
 import MyJobs from './pages/MyJobs';
+import MyReviews from './pages/MyReviews';
 
 function Navbar() {
   const navigate = useNavigate();
@@ -24,10 +25,12 @@ function Navbar() {
         {user?.role === 'customer' && <Link to="/post-job">Post a Job</Link>}
         {user?.role === 'customer' && <Link to="/my-jobs">My Posted Jobs</Link>}
         {user?.role === 'customer' && <Link to="/my-bookings">Booking Requests</Link>}
-{user?.role === 'provider' && <Link to="/my-bookings">My Requests</Link>}
+        {user?.role === 'provider' && <Link to="/my-bookings">My Requests</Link>}
+        {user?.role === 'provider' && <Link to="/my-reviews">My Reviews</Link>}
         {!user && <Link to="/register">Register</Link>}
         {!user && <Link to="/login">Login</Link>}
         {user && <a href="#" onClick={handleLogout}>Logout ({user.name})</a>}
+        
       </div>
     </div>
   );
@@ -43,6 +46,7 @@ function Home() {
         <div className="actions">
           <Link to="/register">Get Started</Link>
           <Link to="/jobs" className="secondary">See Available Jobs</Link>
+          
         </div>
       </div>
     </div>
@@ -61,6 +65,7 @@ function App() {
         <Route path="/jobs" element={<BrowseJobs />} />
         <Route path="/my-bookings" element={<MyBookings />} />
         <Route path="/my-jobs" element={<MyJobs />} />
+        <Route path="/my-reviews" element={<MyReviews />} />
       </Routes>
     </>
   );

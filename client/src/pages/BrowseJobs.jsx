@@ -4,6 +4,7 @@ function BrowseJobs() {
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
+  const [requestedJobs, setRequestedJobs] = useState({});
   const user = JSON.parse(localStorage.getItem('user'));
   const token = localStorage.getItem('token');
 
@@ -38,7 +39,8 @@ function BrowseJobs() {
       const data = await res.json();
 
       if (res.ok) {
-        setMessage('Request sent! Check My Bookings for status.');
+        setMessage('Request sent! Check My Requests for status.');
+        setRequestedJobs({ ...requestedJobs, [jobId]: true });
       } else {
         setMessage(data.message || 'Request failed');
       }
@@ -68,10 +70,19 @@ function BrowseJobs() {
           <p className="meta"><b>Category:</b> {job.category}</p>
           <p className="meta"><b>Location:</b> {job.location}</p>
           <p className="meta"><b>Budget:</b> Rs. {job.budget}</p>
-          
 
           {user?.role === 'provider' && job.status === 'open' && (
-            <button onClick={() => handleRequest(job._id)} style={{ marginTop: '10px' }}>Request This Job</button>
+            <button
+              onClick={() => handleRequest(job._id)}
+              disabled={requestedJobs[job._id]}
+              style={{
+                marginTop: '10px',
+                opacity: requestedJobs[job._id] ? 0.6 : 1,
+                cursor: requestedJobs[job._id] ? 'default' : 'pointer'
+              }}
+            >
+              {requestedJobs[job._id] ? 'Requested ✓' : 'Request This Job'}
+            </button>
           )}
         </div>
       ))}

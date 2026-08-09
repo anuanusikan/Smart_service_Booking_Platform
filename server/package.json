@@ -1,5 +1,5 @@
 {
-  "name": "servicesync-server",
+  "name": "serviceSync-server",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
