@@ -40,7 +40,23 @@ router.post('/', authMiddleware, upload.array('images', 3), async (req, res) => 
 // GET all jobs (public — anyone can browse)
 router.get('/', async (req, res) => {
   try {
-    const jobs = await Job.find({ status: 'open' }).populate('postedBy', 'location');
+    const { category, location, minBudget, maxBudget } = req.query;
+
+    const filter = { status: 'open' };
+
+    if (category) {
+      filter.category = { $regex: category, $options: 'i' };
+    }
+    if (location) {
+      filter.location = { $regex: location, $options: 'i' };
+    }
+    if (minBudget || maxBudget) {
+      filter.budget = {};
+      if (minBudget) filter.budget.$gte = Number(minBudget);
+      if (maxBudget) filter.budget.$lte = Number(maxBudget);
+    }
+
+    const jobs = await Job.find(filter).populate('postedBy', 'location');
     res.json(jobs);
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });

@@ -23,6 +23,16 @@ router.post('/', authMiddleware, async (req, res) => {
       return res.status(400).json({ message: 'This job is no longer open' });
     }
 
+        const existingBooking = await Booking.findOne({
+      job: jobId,
+      provider: req.user.id,
+      status: { $in: ['pending', 'accepted'] }
+    });
+
+    if (existingBooking) {
+      return res.status(400).json({ message: 'You already requested this job' });
+    }
+
     const newBooking = new Booking({
       job: job._id,
       provider: req.user.id,

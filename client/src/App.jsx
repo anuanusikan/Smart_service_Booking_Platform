@@ -6,6 +6,7 @@ import BrowseJobs from './pages/BrowseJobs';
 import MyBookings from './pages/MyBookings';
 import MyJobs from './pages/MyJobs';
 import MyReviews from './pages/MyReviews';
+import ProviderProfile from './pages/ProviderProfile';
 
 function Navbar() {
   const navigate = useNavigate();
@@ -66,6 +67,7 @@ function App() {
         <Route path="/my-bookings" element={<MyBookings />} />
         <Route path="/my-jobs" element={<MyJobs />} />
         <Route path="/my-reviews" element={<MyReviews />} />
+        <Route path="/provider/:id" element={<ProviderProfile />} />
       </Routes>
     </>
   );

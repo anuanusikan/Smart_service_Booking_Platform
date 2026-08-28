@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 
 function MyBookings() {
   const [bookings, setBookings] = useState([]);
@@ -6,16 +7,30 @@ function MyBookings() {
   const [message, setMessage] = useState('');
   const [reviewForms, setReviewForms] = useState({}); // { bookingId: { rating, comment } }
   const [reviewedBookings, setReviewedBookings] = useState({});
+  const [showHistory, setShowHistory] = useState(false);
   const user = JSON.parse(localStorage.getItem('user'));
   const token = localStorage.getItem('token');
 
-  const fetchBookings = () => {
-    fetch('http://localhost:5000/api/bookings/mine', {
-      headers: { 'Authorization': `Bearer ${token}` }
-    })
-      .then(res => res.json())
-      .then(data => {
-        setBookings(data);
+    const fetchBookings = () => {
+    Promise.all([
+      fetch('http://localhost:5000/api/bookings/mine', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      }).then(res => res.json()),
+      user?.role === 'customer'
+        ? fetch('http://localhost:5000/api/reviews/mine', {
+            headers: { 'Authorization': `Bearer ${token}` }
+          }).then(res => res.json())
+        : Promise.resolve([])
+    ])
+      .then(([bookingsData, reviewedIds]) => {
+        setBookings(Array.isArray(bookingsData) ? bookingsData : []);
+
+        const reviewedMap = {};
+        (Array.isArray(reviewedIds) ? reviewedIds : []).forEach(id => {
+          reviewedMap[id] = true;
+        });
+        setReviewedBookings(reviewedMap);
+
         setLoading(false);
       })
       .catch(() => setLoading(false));
@@ -134,19 +149,26 @@ function MyBookings() {
   if (!token) return <p>Please log in to view your bookings.</p>;
   if (loading) return <p>Loading bookings...</p>;
 
+  const activeBookings = bookings.filter(b =>
+    !((b.status === 'completed' && reviewedBookings[b._id]) || b.status === 'declined')
+  );
+  const historyBookings = bookings.filter(b =>
+    (b.status === 'completed' && reviewedBookings[b._id]) || b.status === 'declined'
+  );
+
   return (
     <div className="job-list">
       <h2>{user?.role === 'customer' ? 'Booking Requests' : 'My Requests'}</h2>
       {message && <p><b>{message}</b></p>}
-      {bookings.length === 0 && <p>No bookings yet.</p>}
+      {activeBookings.length === 0 && historyBookings.length === 0 && <p>No bookings yet.</p>}
 
-      {bookings.map((booking) => (
+      {activeBookings.map((booking) => (
         <div key={booking._id} className="card">
           <span className={`status-badge status-${booking.status}`}>{booking.status}</span>
           <h3 style={{ marginTop: '10px' }}>{booking.job?.title}</h3>
           <p>{booking.job?.description}</p>
 
-         {user?.role === 'provider' && (
+          {user?.role === 'provider' && (
             <>
               <p className="meta"><b>Customer:</b> {booking.customer?.name} ({booking.customer?.email})</p>
               {booking.status === 'pending' && (
@@ -154,17 +176,12 @@ function MyBookings() {
                   Cancel Request
                 </button>
               )}
-              {(booking.status === 'declined' || booking.status === 'completed') && (
-                <button onClick={() => handleDelete(booking._id)} style={{ marginTop: '10px', background: '#6b7280' }}>
-                  Remove from History
-                </button>
-              )}
             </>
           )}
 
           {user?.role === 'customer' && (
             <>
-              <p className="meta"><b>Provider:</b> {booking.provider?.name} ({booking.provider?.email})</p>
+              <p className="meta"><b>Provider:</b> <Link to={`/provider/${booking.provider?._id}`}>{booking.provider?.name}</Link> ({booking.provider?.email})</p>
 
               {booking.status === 'pending' && (
                 <div style={{ marginTop: '10px' }}>
@@ -203,14 +220,35 @@ function MyBookings() {
                   <button onClick={() => submitReview(booking._id)}>Submit Review</button>
                 </div>
               )}
-
-              {(booking.status === 'declined' || (booking.status === 'completed' && reviewedBookings[booking._id])) && (
-                <button onClick={() => handleDelete(booking._id)} style={{ marginTop: '10px', background: '#6b7280' }}>
-                  Remove from History
-                </button>
-              )}
             </>
           )}
+        </div>
+      ))}
+
+      {historyBookings.length > 0 && (
+        <div style={{ marginTop: '24px', marginBottom: '16px' }}>
+          <button onClick={() => setShowHistory(!showHistory)} style={{ background: '#6b7280' }}>
+            {showHistory ? 'Hide History' : `Show History (${historyBookings.length})`}
+          </button>
+        </div>
+      )}
+
+      {showHistory && historyBookings.map((booking) => (
+        <div key={booking._id} className="card" style={{ opacity: 0.85 }}>
+          <span className={`status-badge status-${booking.status}`}>{booking.status}</span>
+          <h3 style={{ marginTop: '10px' }}>{booking.job?.title}</h3>
+          <p>{booking.job?.description}</p>
+
+          {user?.role === 'provider' && (
+            <p className="meta"><b>Customer:</b> {booking.customer?.name} ({booking.customer?.email})</p>
+          )}
+          {user?.role === 'customer' && (
+            <p className="meta"><b>Provider:</b> <Link to={`/provider/${booking.provider?._id}`}>{booking.provider?.name}</Link></p>
+          )}
+
+          <button onClick={() => handleDelete(booking._id)} style={{ marginTop: '10px', background: '#6b7280' }}>
+            Remove from History
+          </button>
         </div>
       ))}
     </div>

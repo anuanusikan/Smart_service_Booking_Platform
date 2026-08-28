@@ -69,4 +69,15 @@ router.get('/provider/:providerId', async (req, res) => {
   }
 });
 
+// GET list of booking IDs the logged-in customer has already reviewed
+router.get('/mine', authMiddleware, async (req, res) => {
+  try {
+    const reviews = await Review.find({ customer: req.user.id }).select('booking');
+    const reviewedBookingIds = reviews.map(r => r.booking.toString());
+    res.json(reviewedBookingIds);
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
 module.exports = router;

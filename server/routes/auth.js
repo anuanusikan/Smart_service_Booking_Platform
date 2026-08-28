@@ -77,4 +77,21 @@ router.post('/login', async (req, res) => {
   }
 });
 
+
+
+// GET public profile of a provider
+router.get('/provider/:id', async (req, res) => {
+  try {
+    const provider = await User.findById(req.params.id).select('name role skills location rating hourlyRate createdAt');
+
+    if (!provider || provider.role !== 'provider') {
+      return res.status(404).json({ message: 'Provider not found' });
+    }
+
+    res.json(provider);
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
 module.exports = router;
