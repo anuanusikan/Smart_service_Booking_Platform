@@ -17,6 +17,19 @@ router.post('/', authMiddleware, upload.array('images', 3), async (req, res) => 
 
     const { title, description, category, location, budget } = req.body;
 
+        if (!title || title.trim().length < 3) {
+      return res.status(400).json({ message: 'Title must be at least 3 characters' });
+    }
+    if (!description || description.trim().length < 10) {
+      return res.status(400).json({ message: 'Description must be at least 10 characters' });
+    }
+    if (!category || category.trim().length === 0) {
+      return res.status(400).json({ message: 'Category is required' });
+    }
+    if (budget && (isNaN(budget) || Number(budget) < 0)) {
+      return res.status(400).json({ message: 'Budget must be a positive number' });
+    }
+    
     const imageUrls = req.files ? req.files.map(file => file.path) : [];
 
     const newJob = new Job({
@@ -116,5 +129,59 @@ router.get('/mine', authMiddleware, async (req, res) => {
   }
 });
 
+// UPDATE a job (only the customer who posted it, and only if still open)
+router.put('/:id', authMiddleware, async (req, res) => {
+  try {
+    const job = await Job.findById(req.params.id);
+    if (!job) {
+      return res.status(404).json({ message: 'Job not found' });
+    }
+
+    if (job.postedBy.toString() !== req.user.id) {
+      return res.status(403).json({ message: 'Not authorized to edit this job' });
+    }
+
+    if (job.status !== 'open') {
+      return res.status(400).json({ message: 'Only open jobs can be edited' });
+    }
+
+    const { title, description, category, location, budget } = req.body;
+
+    job.title = title ?? job.title;
+    job.description = description ?? job.description;
+    job.category = category ?? job.category;
+    job.location = location ?? job.location;
+    job.budget = budget ?? job.budget;
+
+    await job.save();
+
+    res.json({ message: 'Job updated successfully', job });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
+// DELETE a job (only the customer who posted it, and only if still open)
+router.delete('/:id', authMiddleware, async (req, res) => {
+  try {
+    const job = await Job.findById(req.params.id);
+    if (!job) {
+      return res.status(404).json({ message: 'Job not found' });
+    }
+
+    if (job.postedBy.toString() !== req.user.id) {
+      return res.status(403).json({ message: 'Not authorized to delete this job' });
+    }
+
+    if (job.status !== 'open') {
+      return res.status(400).json({ message: 'Only open jobs can be deleted' });
+    }
+
+    await Job.findByIdAndDelete(req.params.id);
+    res.json({ message: 'Job deleted successfully' });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
 
 module.exports = router;

@@ -23,9 +23,22 @@ function PostJob() {
     setImages(selectedFiles);
   };
 
-  const handleSubmit = async (e) => {
+     const handleSubmit = async (e) => {
     e.preventDefault();
     setMessage('');
+
+    if (formData.title.trim().length < 3) {
+      setMessage('Title must be at least 3 characters.');
+      return;
+    }
+    if (formData.description.trim().length < 10) {
+      setMessage('Description must be at least 10 characters.');
+      return;
+    }
+    if (formData.budget && Number(formData.budget) < 0) {
+      setMessage('Budget cannot be negative.');
+      return;
+    }
 
     const token = localStorage.getItem('token');
     if (!token) {
@@ -112,6 +125,7 @@ function PostJob() {
           <input
             type="number"
             name="budget"
+            min="0"
             placeholder="Budget (Rs.)"
             value={formData.budget}
             onChange={handleChange}
