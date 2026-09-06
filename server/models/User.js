@@ -31,9 +31,17 @@ const userSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
-  rating: {
+    rating: {
     type: Number,
     default: 0
+  },
+  phone: {
+    type: String,
+    default: ''
+  },
+  profilePicture: {
+    type: String,
+    default: ''
   }
 }, { timestamps: true });
 

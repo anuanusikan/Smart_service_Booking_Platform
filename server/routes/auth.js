@@ -2,6 +2,10 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const multer = require('multer');
+const { storage: profileStorage } = require('../config/cloudinaryProfile');
+const uploadProfilePic = multer({ storage: profileStorage });
+const authMiddleware = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -89,6 +93,40 @@ router.get('/provider/:id', async (req, res) => {
     }
 
     res.json(provider);
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
+// GET my own full profile
+router.get('/me', authMiddleware, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).select('-password');
+    res.json(user);
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
+// UPDATE my own profile (including optional picture upload)
+router.put('/me', authMiddleware, uploadProfilePic.single('profilePicture'), async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    const { name, phone, location, hourlyRate, skills } = req.body;
+
+    if (name) user.name = name;
+    if (phone !== undefined) user.phone = phone;
+    if (location !== undefined) user.location = location;
+    if (hourlyRate !== undefined) user.hourlyRate = hourlyRate;
+    if (skills !== undefined) user.skills = skills.split(',').map(s => s.trim()).filter(Boolean);
+    if (req.file) user.profilePicture = req.file.path;
+
+    await user.save();
+
+    const { password, ...safeUser } = user.toObject();
+    res.json({ message: 'Profile updated', user: safeUser });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
