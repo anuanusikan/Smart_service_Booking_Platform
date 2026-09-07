@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 
-function Login() {
+function Login({ onLoginSuccess }) {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
     email: '',
@@ -31,8 +31,10 @@ function Login() {
       if (res.ok) {
         localStorage.setItem('token', data.token);
         localStorage.setItem('user', JSON.stringify(data.user));
+        if (onLoginSuccess) onLoginSuccess();
         setMessage('Login successful!');
-        setTimeout(() => navigate('/'), 1000);
+        const destination = data.user.role === 'provider' ? '/provider-dashboard' : '/dashboard';
+        setTimeout(() => navigate(destination), 1000);
       } else {
         setMessage(data.message || 'Login failed');
       }

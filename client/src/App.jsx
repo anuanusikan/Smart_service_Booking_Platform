@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Routes, Route, Link, useNavigate } from 'react-router-dom';
 import Register from './pages/Register';
 import Login from './pages/Login';
@@ -10,18 +10,18 @@ import MyReviews from './pages/MyReviews';
 import ProviderProfile from './pages/ProviderProfile';
 import CustomerDashboard from './pages/CustomerDashboard';
 import Profile from './pages/Profile';
+import ProviderDashboard from './pages/ProviderDashboard';
+import ProviderEarnings from './pages/ProviderEarnings';
+import ProviderSchedule from './pages/ProviderSchedule';
 
-function Navbar({ onProfileClick }) {
-  const user = JSON.parse(localStorage.getItem('user'));
 
+function Navbar({ onProfileClick, user }) {
   return (
     <div className="navbar">
       <Link to="/" className="logo">ServiceSync</Link>
       <div className="links" style={{ display: 'flex', alignItems: 'center', gap: '18px' }}>
         {user?.role === 'customer' && <Link to="/dashboard">Dashboard</Link>}
-        {user?.role === 'provider' && <Link to="/jobs">Matched Jobs</Link>}
-        {user?.role === 'provider' && <Link to="/my-bookings">My Requests</Link>}
-        {user?.role === 'provider' && <Link to="/my-reviews">My Reviews</Link>}
+        {user?.role === 'provider' && <Link to="/provider-dashboard">Dashboard</Link>}
 
         {user && (
           <>
@@ -39,12 +39,23 @@ function Navbar({ onProfileClick }) {
 }
 
 function Home() {
+  const navigate = useNavigate();
+  const user = JSON.parse(localStorage.getItem('user'));
+
+  useEffect(() => {
+    if (user?.role === 'customer') navigate('/dashboard');
+    if (user?.role === 'provider') navigate('/provider-dashboard');
+  }, [user]);
+
+  if (user?.role === 'customer' || user?.role === 'provider') return null;
+
   const categories = [
     { name: 'Plumbing', icon: '🔧' },
     { name: 'Electrical', icon: '⚡' },
     { name: 'Cleaning', icon: '🧹' },
     { name: 'Handyman', icon: '🛠️' },
   ];
+  
 
   return (
     <>
@@ -91,14 +102,19 @@ function Home() {
 
 function App() {
   const [showProfile, setShowProfile] = useState(false);
+  const [user, setUser] = useState(() => JSON.parse(localStorage.getItem('user')));
+
+  const refreshUser = () => {
+    setUser(JSON.parse(localStorage.getItem('user')));
+  };
 
   return (
     <>
-      <Navbar onProfileClick={() => setShowProfile(true)} />
+      <Navbar onProfileClick={() => setShowProfile(true)} user={user} />
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/register" element={<Register />} />
-        <Route path="/login" element={<Login />} />
+        <Route path="/login" element={<Login onLoginSuccess={refreshUser} />} />
         <Route path="/post-job" element={<PostJob />} />
         <Route path="/jobs" element={<BrowseJobs />} />
         <Route path="/my-bookings" element={<MyBookings />} />
@@ -106,8 +122,11 @@ function App() {
         <Route path="/my-reviews" element={<MyReviews />} />
         <Route path="/provider/:id" element={<ProviderProfile />} />
         <Route path="/dashboard" element={<CustomerDashboard />} />
+        <Route path="/provider-dashboard" element={<ProviderDashboard />} />
+        <Route path="/provider-earnings" element={<ProviderEarnings />} />
+        <Route path="/provider-schedule" element={<ProviderSchedule />} />
       </Routes>
-      {showProfile && <Profile onClose={() => setShowProfile(false)} />}
+      {showProfile && <Profile onClose={() => setShowProfile(false)} onProfileUpdate={refreshUser} />}
     </>
   );
 }

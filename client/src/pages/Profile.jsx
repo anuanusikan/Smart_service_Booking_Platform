@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-function Profile({ onClose }) {
+function Profile({ onClose, onProfileUpdate }) {
   const navigate = useNavigate();
   const [profile, setProfile] = useState(null);
   const [editing, setEditing] = useState(false);
@@ -61,9 +61,10 @@ function Profile({ onClose }) {
     }
   };
 
-  const handleLogout = () => {
+   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    if (onProfileUpdate) onProfileUpdate();
     onClose();
     navigate('/');
   };
