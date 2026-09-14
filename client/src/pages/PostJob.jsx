@@ -82,7 +82,7 @@ function PostJob() {
     }
   };
 
-  return (
+     return (
     <div className="container">
       <div className="card">
         <h2>Post a Job</h2>
@@ -131,7 +131,7 @@ function PostJob() {
             onChange={handleChange}
           />
 
-          <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px' }}>
+          <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: 600, color: 'var(--navy)' }}>
             Add photos (optional, up to 3)
           </label>
           <input
@@ -141,12 +141,12 @@ function PostJob() {
             onChange={handleImageChange}
           />
 
-          <button type="submit" disabled={uploading} style={{ marginTop: '10px' }}>
-            {uploading ? 'Uploading...' : 'Post Job'}
+          <button type="submit" disabled={uploading} className="btn-success" style={{ width: '100%', marginTop: '10px' }}>
+            {uploading ? 'Uploading...' : 'Post Job →'}
           </button>
         </form>
 
-        {message && <p>{message}</p>}
+        {message && <p style={{ marginTop: '12px' }}>{message}</p>}
       </div>
     </div>
   );

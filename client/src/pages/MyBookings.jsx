@@ -1,17 +1,19 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import MessageThread from './MessageThread';
 
 function MyBookings() {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
-  const [reviewForms, setReviewForms] = useState({}); // { bookingId: { rating, comment } }
+  const [reviewForms, setReviewForms] = useState({});
   const [reviewedBookings, setReviewedBookings] = useState({});
-  const [showHistory, setShowHistory] = useState(false);
+  const [activeTab, setActiveTab] = useState('active');
+  const [activeChat, setActiveChat] = useState(null);
   const user = JSON.parse(localStorage.getItem('user'));
   const token = localStorage.getItem('token');
 
-    const fetchBookings = () => {
+  const fetchBookings = () => {
     Promise.all([
       fetch('http://localhost:5000/api/bookings/mine', {
         headers: { 'Authorization': `Bearer ${token}` }
@@ -159,10 +161,43 @@ function MyBookings() {
   return (
     <div className="job-list">
       <h2>{user?.role === 'customer' ? 'Booking Requests' : 'My Requests'}</h2>
-      {message && <p><b>{message}</b></p>}
-      {activeBookings.length === 0 && historyBookings.length === 0 && <p>No bookings yet.</p>}
 
-      {activeBookings.map((booking) => (
+      <div style={{ display: 'flex', gap: '4px', marginBottom: '20px', borderBottom: '1px solid var(--border)' }}>
+        <button
+          onClick={() => setActiveTab('active')}
+          style={{
+            background: 'transparent',
+            color: activeTab === 'active' ? 'var(--primary)' : 'var(--slate)',
+            borderBottom: activeTab === 'active' ? '2px solid var(--primary)' : '2px solid transparent',
+            borderRadius: 0,
+            padding: '10px 4px',
+            marginRight: '20px',
+            fontWeight: 600
+          }}
+        >
+          Active ({activeBookings.length})
+        </button>
+        <button
+          onClick={() => setActiveTab('history')}
+          style={{
+            background: 'transparent',
+            color: activeTab === 'history' ? 'var(--primary)' : 'var(--slate)',
+            borderBottom: activeTab === 'history' ? '2px solid var(--primary)' : '2px solid transparent',
+            borderRadius: 0,
+            padding: '10px 4px',
+            fontWeight: 600
+          }}
+        >
+          History ({historyBookings.length})
+        </button>
+      </div>
+
+      {message && <p><b>{message}</b></p>}
+
+      {activeTab === 'active' && activeBookings.length === 0 && <p className="meta">No active bookings.</p>}
+      {activeTab === 'history' && historyBookings.length === 0 && <p className="meta">No history yet.</p>}
+
+      {activeTab === 'active' && activeBookings.map((booking) => (
         <div key={booking._id} className="card">
           <span className={`status-badge status-${booking.status}`}>{booking.status}</span>
           <h3 style={{ marginTop: '10px' }}>{booking.job?.title}</h3>
@@ -171,6 +206,12 @@ function MyBookings() {
           {user?.role === 'provider' && (
             <>
               <p className="meta"><b>Customer:</b> {booking.customer?.name} ({booking.customer?.email})</p>
+              <button
+                onClick={() => setActiveChat({ bookingId: booking._id, otherPersonName: booking.customer?.name })}
+                style={{ marginTop: '10px', marginRight: '8px', background: 'var(--bg)', color: 'var(--navy)', border: '1px solid var(--border)' }}
+              >
+                💬 Message
+              </button>
               {booking.status === 'pending' && (
                 <button onClick={() => handleCancel(booking._id)} style={{ marginTop: '10px', background: '#B5453A' }}>
                   Cancel Request
@@ -182,6 +223,13 @@ function MyBookings() {
           {user?.role === 'customer' && (
             <>
               <p className="meta"><b>Provider:</b> <Link to={`/provider/${booking.provider?._id}`}>{booking.provider?.name}</Link> ({booking.provider?.email})</p>
+
+              <button
+                onClick={() => setActiveChat({ bookingId: booking._id, otherPersonName: booking.provider?.name })}
+                style={{ marginBottom: '10px', background: 'var(--bg)', color: 'var(--navy)', border: '1px solid var(--border)' }}
+              >
+                💬 Message
+              </button>
 
               {booking.status === 'pending' && (
                 <div style={{ marginTop: '10px' }}>
@@ -198,7 +246,7 @@ function MyBookings() {
               )}
 
               {booking.status === 'completed' && !reviewedBookings[booking._id] && (
-                <div style={{ marginTop: '14px', borderTop: '1px solid #eee', paddingTop: '14px' }}>
+                <div style={{ marginTop: '14px', borderTop: '1px solid var(--border)', paddingTop: '14px' }}>
                   <p className="eyebrow">Leave a Review</p>
                   <select
                     value={reviewForms[booking._id]?.rating || ''}
@@ -217,7 +265,7 @@ function MyBookings() {
                     value={reviewForms[booking._id]?.comment || ''}
                     onChange={(e) => updateReviewForm(booking._id, 'comment', e.target.value)}
                   />
-                  <button onClick={() => submitReview(booking._id)}>Submit Review</button>
+                  <button onClick={() => submitReview(booking._id)} className="btn-success">Submit Review</button>
                 </div>
               )}
             </>
@@ -225,15 +273,7 @@ function MyBookings() {
         </div>
       ))}
 
-      {historyBookings.length > 0 && (
-        <div style={{ marginTop: '24px', marginBottom: '16px' }}>
-          <button onClick={() => setShowHistory(!showHistory)} style={{ background: '#6b7280' }}>
-            {showHistory ? 'Hide History' : `Show History (${historyBookings.length})`}
-          </button>
-        </div>
-      )}
-
-      {showHistory && historyBookings.map((booking) => (
+      {activeTab === 'history' && historyBookings.map((booking) => (
         <div key={booking._id} className="card" style={{ opacity: 0.85 }}>
           <span className={`status-badge status-${booking.status}`}>{booking.status}</span>
           <h3 style={{ marginTop: '10px' }}>{booking.job?.title}</h3>
@@ -251,6 +291,14 @@ function MyBookings() {
           </button>
         </div>
       ))}
+
+      {activeChat && (
+        <MessageThread
+          bookingId={activeChat.bookingId}
+          otherPersonName={activeChat.otherPersonName}
+          onClose={() => setActiveChat(null)}
+        />
+      )}
     </div>
   );
 }
