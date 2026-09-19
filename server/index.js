@@ -7,6 +7,7 @@ const jobRoutes = require('./routes/jobs');
 const bookingRoutes = require('./routes/bookings');
 const reviewRoutes = require('./routes/reviews');
 const messageRoutes = require('./routes/messages');
+const quoteRoutes = require('./routes/quotes');
 
 const app = express();
 app.use(cors());
@@ -16,6 +17,7 @@ app.use('/api/jobs', jobRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/messages', messageRoutes);
+app.use('/api/quotes', quoteRoutes);
 
 mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log("MongoDB Connected"))
