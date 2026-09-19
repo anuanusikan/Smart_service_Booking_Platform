@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Routes, Route, Link, useNavigate } from 'react-router-dom';
+import { Routes, Route, Link, useNavigate, useLocation } from 'react-router-dom';
 import Register from './pages/Register';
 import Login from './pages/Login';
 import PostJob from './pages/PostJob';
@@ -14,8 +14,22 @@ import ProviderDashboard from './pages/ProviderDashboard';
 import ProviderEarnings from './pages/ProviderEarnings';
 import ProviderSchedule from './pages/ProviderSchedule';
 
-
 function Navbar({ onProfileClick, user }) {
+  const location = useLocation();
+  const isHomePage = location.pathname === '/';
+
+  if (isHomePage) {
+    return (
+      <div className="navbar">
+        <Link to="/" className="logo">ServiceSync</Link>
+        <div className="links" style={{ display: 'flex', alignItems: 'center', gap: '18px' }}>
+          <Link to="/register" className="btn-link">Register</Link>
+          <Link to="/login">Login</Link>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="navbar">
       <Link to="/" className="logo">ServiceSync</Link>
@@ -39,16 +53,6 @@ function Navbar({ onProfileClick, user }) {
 }
 
 function Home() {
-  const navigate = useNavigate();
-  const user = JSON.parse(localStorage.getItem('user'));
-
-  useEffect(() => {
-    if (user?.role === 'customer') navigate('/dashboard');
-    if (user?.role === 'provider') navigate('/provider-dashboard');
-  }, [user]);
-
-  if (user?.role === 'customer' || user?.role === 'provider') return null;
-
   const categories = [
     { name: 'Plumbing', icon: '🔧' },
     { name: 'Electrical', icon: '⚡' },
