@@ -2,6 +2,7 @@ const express = require('express');
 const Quote = require('../models/Quote');
 const Job = require('../models/Job');
 const Booking = require('../models/Booking');
+const Notification = require('../models/Notification');
 const authMiddleware = require('../middleware/auth');
 
 const router = express.Router();
@@ -41,6 +42,20 @@ router.post('/', authMiddleware, async (req, res) => {
     });
 
     await quote.save();
+
+    try {
+      await Notification.create({
+        recipient: job.postedBy,
+        sender: req.user.id,
+        type: 'quote_received',
+        title: 'New Quote Received',
+        message: `A provider submitted a quote of Rs. ${price} for "${job.title}"`,
+        link: '/my-jobs'
+      });
+    } catch (notifErr) {
+      console.error('Notification error:', notifErr);
+    }
+
     res.status(201).json({ message: 'Quote submitted', quote });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
@@ -58,7 +73,7 @@ router.get('/job/:jobId', authMiddleware, async (req, res) => {
     }
 
     const quotes = await Quote.find({ job: req.params.jobId })
-      .populate('provider', 'name email location rating skills')
+      .populate('provider', 'name email location rating skills profilePicture')
       .sort({ price: 1 });
 
     res.json(quotes);
@@ -100,7 +115,7 @@ router.put('/:id/accept', authMiddleware, async (req, res) => {
       { status: 'declined' }
     );
 
-    await Job.findByIdAndUpdate(quote.job, { status: 'assigned' });
+    const job = await Job.findByIdAndUpdate(quote.job, { status: 'assigned' }, { new: true });
 
     const booking = new Booking({
       job: quote.job,
@@ -109,6 +124,19 @@ router.put('/:id/accept', authMiddleware, async (req, res) => {
       status: 'accepted'
     });
     await booking.save();
+
+    try {
+      await Notification.create({
+        recipient: quote.provider,
+        sender: req.user.id,
+        type: 'quote_status',
+        title: 'Quote Accepted!',
+        message: `Your quote of Rs. ${quote.price} for "${job?.title || 'the job'}" was accepted!`,
+        link: '/my-bookings'
+      });
+    } catch (notifErr) {
+      console.error('Notification error:', notifErr);
+    }
 
     res.json({ message: 'Quote accepted, booking created', booking });
   } catch (err) {

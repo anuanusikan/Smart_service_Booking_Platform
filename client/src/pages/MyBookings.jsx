@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import MessageThread from './MessageThread';
+import ProviderPortalLayout from '../components/ProviderPortalLayout';
+import CustomerPortalLayout from '../components/CustomerPortalLayout';
 
 function MyBookings() {
   const [bookings, setBookings] = useState([]);
@@ -10,7 +12,15 @@ function MyBookings() {
   const [reviewedBookings, setReviewedBookings] = useState({});
   const [activeTab, setActiveTab] = useState('active');
   const [activeChat, setActiveChat] = useState(null);
-  const user = JSON.parse(localStorage.getItem('user'));
+
+  const user = (() => {
+    try {
+      const item = localStorage.getItem('user');
+      return item ? JSON.parse(item) : null;
+    } catch {
+      return null;
+    }
+  })();
   const token = localStorage.getItem('token');
 
   const fetchBookings = () => {
@@ -79,7 +89,7 @@ function MyBookings() {
         setMessage('Request cancelled');
         fetchBookings();
       } else {
-        setMessage(data.message || 'Cancel failed');
+        setMessage(data.message || 'Failed to cancel request');
       }
     } catch (err) {
       setMessage('Server error. Please try again.');
@@ -96,10 +106,10 @@ function MyBookings() {
       const data = await res.json();
 
       if (res.ok) {
-        setMessage('Removed from history');
+        setMessage('Booking removed from history');
         fetchBookings();
       } else {
-        setMessage(data.message || 'Delete failed');
+        setMessage(data.message || 'Failed to remove booking');
       }
     } catch (err) {
       setMessage('Server error. Please try again.');
@@ -109,7 +119,10 @@ function MyBookings() {
   const updateReviewForm = (bookingId, field, value) => {
     setReviewForms({
       ...reviewForms,
-      [bookingId]: { ...reviewForms[bookingId], [field]: value }
+      [bookingId]: {
+        ...reviewForms[bookingId],
+        [field]: value
+      }
     });
   };
 
@@ -118,7 +131,7 @@ function MyBookings() {
     const form = reviewForms[bookingId] || {};
 
     if (!form.rating) {
-      setMessage('Please select a rating before submitting.');
+      setMessage('Please select a rating');
       return;
     }
 
@@ -148,8 +161,18 @@ function MyBookings() {
     }
   };
 
-  if (!token) return <p>Please log in to view your bookings.</p>;
-  if (loading) return <p>Loading bookings...</p>;
+  if (!token) return <p style={{ padding: '32px' }}>Please log in to view your bookings.</p>;
+  
+  if (loading) {
+    if (user?.role === 'provider') {
+      return (
+        <ProviderPortalLayout title="My Requests & Bookings" subtitle="Loading bookings...">
+          <p style={{ padding: '24px' }}>Loading bookings...</p>
+        </ProviderPortalLayout>
+      );
+    }
+    return <p style={{ padding: '32px' }}>Loading bookings...</p>;
+  }
 
   const activeBookings = bookings.filter(b =>
     !((b.status === 'completed' && reviewedBookings[b._id]) || b.status === 'declined')
@@ -158,139 +181,143 @@ function MyBookings() {
     (b.status === 'completed' && reviewedBookings[b._id]) || b.status === 'declined'
   );
 
-  return (
-    <div className="job-list">
-      <h2>{user?.role === 'customer' ? 'Booking Requests' : 'My Requests'}</h2>
-
-      <div style={{ display: 'flex', gap: '4px', marginBottom: '20px', borderBottom: '1px solid var(--border)' }}>
+  const bookingsBody = (
+    <>
+      <div className="tab-nav-bar">
         <button
+          className={`tab-btn${activeTab === 'active' ? ' active' : ''}`}
           onClick={() => setActiveTab('active')}
-          style={{
-            background: 'transparent',
-            color: activeTab === 'active' ? 'var(--primary)' : 'var(--slate)',
-            borderBottom: activeTab === 'active' ? '2px solid var(--primary)' : '2px solid transparent',
-            borderRadius: 0,
-            padding: '10px 4px',
-            marginRight: '20px',
-            fontWeight: 600
-          }}
         >
           Active ({activeBookings.length})
         </button>
         <button
+          className={`tab-btn${activeTab === 'history' ? ' active' : ''}`}
           onClick={() => setActiveTab('history')}
-          style={{
-            background: 'transparent',
-            color: activeTab === 'history' ? 'var(--primary)' : 'var(--slate)',
-            borderBottom: activeTab === 'history' ? '2px solid var(--primary)' : '2px solid transparent',
-            borderRadius: 0,
-            padding: '10px 4px',
-            fontWeight: 600
-          }}
         >
           History ({historyBookings.length})
         </button>
       </div>
 
-      {message && <p><b>{message}</b></p>}
+      {message && (
+        <div style={{ padding: '10px 14px', background: 'var(--info-bg)', color: 'var(--primary)', borderRadius: '8px', marginBottom: '16px', fontWeight: 600 }}>
+          {message}
+        </div>
+      )}
 
-      {activeTab === 'active' && activeBookings.length === 0 && <p className="meta">No active bookings.</p>}
-      {activeTab === 'history' && historyBookings.length === 0 && <p className="meta">No history yet.</p>}
+      {activeTab === 'active' && activeBookings.length === 0 && (
+        <div className="card" style={{ textAlign: 'center', padding: '36px 20px' }}>
+          <p style={{ margin: 0, fontWeight: 600, color: 'var(--navy)' }}>No active requests or bookings.</p>
+          <p className="meta" style={{ margin: '4px 0 0' }}>New booking requests and accepted jobs will appear here.</p>
+        </div>
+      )}
 
-      {activeTab === 'active' && activeBookings.map((booking) => (
-        <div key={booking._id} className="card">
-          <span className={`status-badge status-${booking.status}`}>{booking.status}</span>
-          <h3 style={{ marginTop: '10px' }}>{booking.job?.title}</h3>
-          <p>{booking.job?.description}</p>
+      {activeTab === 'history' && historyBookings.length === 0 && (
+        <div className="card" style={{ textAlign: 'center', padding: '36px 20px' }}>
+          <p style={{ margin: 0, fontWeight: 600, color: 'var(--navy)' }}>No booking history yet.</p>
+        </div>
+      )}
 
-          {user?.role === 'provider' && (
-            <>
-              <p className="meta"><b>Customer:</b> {booking.customer?.name} ({booking.customer?.email})</p>
-              <button
-                onClick={() => setActiveChat({ bookingId: booking._id, otherPersonName: booking.customer?.name })}
-                style={{ marginTop: '10px', marginRight: '8px', background: 'var(--bg)', color: 'var(--navy)', border: '1px solid var(--border)' }}
-              >
-                💬 Message
-              </button>
-              {booking.status === 'pending' && (
-                <button onClick={() => handleCancel(booking._id)} style={{ marginTop: '10px', background: '#B5453A' }}>
-                  Cancel Request
-                </button>
-              )}
-            </>
-          )}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+        {activeTab === 'active' && activeBookings.map((booking) => (
+          <div key={booking._id} className="card">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span className={`status-badge status-${booking.status}`}>{booking.status}</span>
+              <span style={{ fontSize: '13px', color: 'var(--slate)' }}>
+                {new Date(booking.updatedAt).toLocaleDateString()}
+              </span>
+            </div>
 
-          {user?.role === 'customer' && (
-            <>
-              <p className="meta"><b>Provider:</b> <Link to={`/provider/${booking.provider?._id}`}>{booking.provider?.name}</Link> ({booking.provider?.email})</p>
+            <h3 style={{ marginTop: '10px', marginBottom: '6px', fontSize: '16px' }}>{booking.job?.title}</h3>
+            <p style={{ color: 'var(--slate)', fontSize: '14px', margin: '0 0 10px' }}>{booking.job?.description}</p>
 
-              <button
-                onClick={() => setActiveChat({ bookingId: booking._id, otherPersonName: booking.provider?.name })}
-                style={{ marginBottom: '10px', background: 'var(--bg)', color: 'var(--navy)', border: '1px solid var(--border)' }}
-              >
-                💬 Message
-              </button>
-
-              {booking.status === 'pending' && (
-                <div style={{ marginTop: '10px' }}>
-                  <button onClick={() => handleAction(booking._id, 'accepted')}>Accept</button>
-                  {' '}
-                  <button onClick={() => handleAction(booking._id, 'declined')} style={{ background: '#B5453A' }}>Decline</button>
-                </div>
-              )}
-
-              {booking.status === 'accepted' && (
-                <div style={{ marginTop: '10px' }}>
-                  <button onClick={() => handleAction(booking._id, 'completed')}>Mark as Completed</button>
-                </div>
-              )}
-
-              {booking.status === 'completed' && !reviewedBookings[booking._id] && (
-                <div style={{ marginTop: '14px', borderTop: '1px solid var(--border)', paddingTop: '14px' }}>
-                  <p className="eyebrow">Leave a Review</p>
-                  <select
-                    value={reviewForms[booking._id]?.rating || ''}
-                    onChange={(e) => updateReviewForm(booking._id, 'rating', e.target.value)}
+            {user?.role === 'provider' && (
+              <>
+                <p className="meta"><b>Customer:</b> {booking.customer?.name} ({booking.customer?.email})</p>
+                <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+                  <button
+                    onClick={() => setActiveChat({ bookingId: booking._id, otherPersonName: booking.customer?.name })}
+                    style={{ background: 'var(--bg)', color: 'var(--navy)', border: '1px solid var(--border)' }}
                   >
-                    <option value="">Select rating</option>
-                    <option value="5">5 - Excellent</option>
-                    <option value="4">4 - Good</option>
-                    <option value="3">3 - Average</option>
-                    <option value="2">2 - Below Average</option>
-                    <option value="1">1 - Poor</option>
-                  </select>
-                  <textarea
-                    placeholder="Optional comment"
-                    rows={2}
-                    value={reviewForms[booking._id]?.comment || ''}
-                    onChange={(e) => updateReviewForm(booking._id, 'comment', e.target.value)}
-                  />
-                  <button onClick={() => submitReview(booking._id)} className="btn-success">Submit Review</button>
+                    💬 Message Client
+                  </button>
+                  {booking.status === 'pending' && (
+                    <button onClick={() => handleCancel(booking._id)} style={{ background: '#B5453A' }}>
+                      Cancel Request
+                    </button>
+                  )}
                 </div>
-              )}
-            </>
-          )}
-        </div>
-      ))}
+              </>
+            )}
 
-      {activeTab === 'history' && historyBookings.map((booking) => (
-        <div key={booking._id} className="card" style={{ opacity: 0.85 }}>
-          <span className={`status-badge status-${booking.status}`}>{booking.status}</span>
-          <h3 style={{ marginTop: '10px' }}>{booking.job?.title}</h3>
-          <p>{booking.job?.description}</p>
+            {user?.role === 'customer' && (
+              <>
+                <p className="meta"><b>Provider:</b> <Link to={`/provider/${booking.provider?._id}`}>{booking.provider?.name}</Link> ({booking.provider?.email})</p>
 
-          {user?.role === 'provider' && (
-            <p className="meta"><b>Customer:</b> {booking.customer?.name} ({booking.customer?.email})</p>
-          )}
-          {user?.role === 'customer' && (
-            <p className="meta"><b>Provider:</b> <Link to={`/provider/${booking.provider?._id}`}>{booking.provider?.name}</Link></p>
-          )}
+                <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+                  <button
+                    onClick={() => setActiveChat({ bookingId: booking._id, otherPersonName: booking.provider?.name })}
+                    style={{ background: 'var(--bg)', color: 'var(--navy)', border: '1px solid var(--border)' }}
+                  >
+                    💬 Message
+                  </button>
+                  {booking.status === 'pending' && (
+                    <>
+                      <button onClick={() => handleAction(booking._id, 'accepted')}>Accept</button>
+                      <button onClick={() => handleAction(booking._id, 'declined')} style={{ background: '#B5453A' }}>Decline</button>
+                    </>
+                  )}
+                  {booking.status === 'accepted' && (
+                    <button onClick={() => handleAction(booking._id, 'completed')}>Mark as Completed</button>
+                  )}
+                </div>
 
-          <button onClick={() => handleDelete(booking._id)} style={{ marginTop: '10px', background: '#6b7280' }}>
-            Remove from History
-          </button>
-        </div>
-      ))}
+                {booking.status === 'completed' && !reviewedBookings[booking._id] && (
+                  <div style={{ marginTop: '14px', borderTop: '1px solid var(--border)', paddingTop: '14px' }}>
+                    <p className="eyebrow">Leave a Review</p>
+                    <select
+                      value={reviewForms[booking._id]?.rating || ''}
+                      onChange={(e) => updateReviewForm(booking._id, 'rating', e.target.value)}
+                    >
+                      <option value="">Select rating</option>
+                      <option value="5">5 - Excellent</option>
+                      <option value="4">4 - Good</option>
+                      <option value="3">3 - Average</option>
+                      <option value="2">2 - Below Average</option>
+                      <option value="1">1 - Poor</option>
+                    </select>
+                    <textarea
+                      placeholder="Optional comment"
+                      rows={2}
+                      value={reviewForms[booking._id]?.comment || ''}
+                      onChange={(e) => updateReviewForm(booking._id, 'comment', e.target.value)}
+                    />
+                    <button onClick={() => submitReview(booking._id)} className="btn-success">Submit Review</button>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        ))}
+
+        {activeTab === 'history' && historyBookings.map((booking) => (
+          <div key={booking._id} className="card" style={{ opacity: 0.85 }}>
+            <span className={`status-badge status-${booking.status}`}>{booking.status}</span>
+            <h3 style={{ marginTop: '10px' }}>{booking.job?.title}</h3>
+            <p>{booking.job?.description}</p>
+
+            {user?.role === 'provider' && (
+              <p className="meta"><b>Customer:</b> {booking.customer?.name} ({booking.customer?.email})</p>
+            )}
+            {user?.role === 'customer' && (
+              <p className="meta"><b>Provider:</b> <Link to={`/provider/${booking.provider?._id}`}>{booking.provider?.name}</Link></p>
+            )}
+
+            <button onClick={() => handleDelete(booking._id)} style={{ marginTop: '10px', background: '#6b7280' }}>
+              Remove from History
+            </button>
+          </div>
+        ))}
+      </div>
 
       {activeChat && (
         <MessageThread
@@ -299,6 +326,35 @@ function MyBookings() {
           onClose={() => setActiveChat(null)}
         />
       )}
+    </>
+  );
+
+  if (user?.role === 'provider') {
+    return (
+      <ProviderPortalLayout
+        title="My Requests & Bookings"
+        subtitle="Manage incoming service requests and ongoing client jobs."
+      >
+        {bookingsBody}
+      </ProviderPortalLayout>
+    );
+  }
+
+  if (user?.role === 'customer') {
+    return (
+      <CustomerPortalLayout
+        title="Booking Requests & Hires"
+        subtitle="Manage active job bookings, communicate with providers, and leave ratings."
+      >
+        {bookingsBody}
+      </CustomerPortalLayout>
+    );
+  }
+
+  return (
+    <div className="job-list">
+      <h2>Booking Requests</h2>
+      {bookingsBody}
     </div>
   );
 }

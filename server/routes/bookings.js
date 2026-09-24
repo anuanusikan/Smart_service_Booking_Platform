@@ -1,6 +1,7 @@
 const express = require('express');
 const Booking = require('../models/Booking');
 const Job = require('../models/Job');
+const Notification = require('../models/Notification');
 const authMiddleware = require('../middleware/auth');
 
 const router = express.Router();
@@ -23,7 +24,7 @@ router.post('/', authMiddleware, async (req, res) => {
       return res.status(400).json({ message: 'This job is no longer open' });
     }
 
-        const existingBooking = await Booking.findOne({
+    const existingBooking = await Booking.findOne({
       job: jobId,
       provider: req.user.id,
       status: { $in: ['pending', 'accepted'] }
@@ -41,6 +42,19 @@ router.post('/', authMiddleware, async (req, res) => {
 
     await newBooking.save();
 
+    try {
+      await Notification.create({
+        recipient: job.postedBy,
+        sender: req.user.id,
+        type: 'booking_request',
+        title: 'New Booking Request',
+        message: `A service provider requested to take your job "${job.title}"`,
+        link: '/my-bookings'
+      });
+    } catch (notifErr) {
+      console.error('Notification error:', notifErr);
+    }
+
     res.status(201).json({ message: 'Booking request sent', booking: newBooking });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
@@ -56,8 +70,8 @@ router.get('/mine', authMiddleware, async (req, res) => {
 
     const bookings = await Booking.find(filter)
       .populate('job')
-      .populate('provider', 'name email')
-      .populate('customer', 'name email');
+      .populate('provider', 'name email profilePicture')
+      .populate('customer', 'name email profilePicture');
 
     res.json(bookings);
   } catch (err) {
@@ -70,7 +84,7 @@ router.put('/:id', authMiddleware, async (req, res) => {
   try {
     const { status } = req.body; // "accepted", "declined", or "completed"
 
-    const booking = await Booking.findById(req.params.id);
+    const booking = await Booking.findById(req.params.id).populate('job');
     if (!booking) {
       return res.status(404).json({ message: 'Booking not found' });
     }
@@ -92,6 +106,20 @@ router.put('/:id', authMiddleware, async (req, res) => {
 
     if (status === 'completed') {
       await Job.findByIdAndUpdate(booking.job, { status: 'completed' });
+    }
+
+    try {
+      const statusTitle = status.charAt(0).toUpperCase() + status.slice(1);
+      await Notification.create({
+        recipient: booking.provider,
+        sender: req.user.id,
+        type: 'booking_status',
+        title: `Booking ${statusTitle}`,
+        message: `Your booking for "${booking.job?.title || 'the job'}" has been ${status}.`,
+        link: '/my-bookings'
+      });
+    } catch (notifErr) {
+      console.error('Notification error:', notifErr);
     }
 
     res.json({ message: `Booking ${status}`, booking });

@@ -1,5 +1,7 @@
-import { useState, useEffect } from 'react';
-import { Routes, Route, Link, useNavigate, useLocation } from 'react-router-dom';
+import { useState } from 'react';
+import { Routes, Route } from 'react-router-dom';
+import Navbar from './components/Navbar';
+import Home from './pages/Home';
 import Register from './pages/Register';
 import Login from './pages/Login';
 import PostJob from './pages/PostJob';
@@ -13,108 +15,34 @@ import Profile from './pages/Profile';
 import ProviderDashboard from './pages/ProviderDashboard';
 import ProviderEarnings from './pages/ProviderEarnings';
 import ProviderSchedule from './pages/ProviderSchedule';
-
-function Navbar({ onProfileClick, user }) {
-  const location = useLocation();
-  const isHomePage = location.pathname === '/';
-
-  if (isHomePage) {
-    return (
-      <div className="navbar">
-        <Link to="/" className="logo">ServiceSync</Link>
-        <div className="links" style={{ display: 'flex', alignItems: 'center', gap: '18px' }}>
-          <Link to="/register" className="btn-link">Register</Link>
-          <Link to="/login">Login</Link>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="navbar">
-      <Link to="/" className="logo">ServiceSync</Link>
-      <div className="links" style={{ display: 'flex', alignItems: 'center', gap: '18px' }}>
-        {user?.role === 'customer' && <Link to="/dashboard">Dashboard</Link>}
-        {user?.role === 'provider' && <Link to="/provider-dashboard">Dashboard</Link>}
-
-        {user && (
-          <>
-            <span title="Messages (coming soon)" style={{ cursor: 'default', color: 'var(--slate)' }}>✉ Messages</span>
-            <span title="Notifications (coming soon)" style={{ cursor: 'default', color: 'var(--slate)' }}>🔔 Notifications</span>
-          </>
-        )}
-
-        {!user && <Link to="/register" className="btn-link">Register</Link>}
-        {!user && <Link to="/login">Login</Link>}
-        {user && <a href="#" onClick={(e) => { e.preventDefault(); onProfileClick(); }}>{user.name}</a>}
-      </div>
-    </div>
-  );
-}
-
-function Home() {
-  const categories = [
-    { name: 'Plumbing', icon: '🔧' },
-    { name: 'Electrical', icon: '⚡' },
-    { name: 'Cleaning', icon: '🧹' },
-    { name: 'Handyman', icon: '🛠️' },
-  ];
-  
-
-  return (
-    <>
-      <div className="hero">
-        <div className="hero-inner">
-          <h1>Find Trusted Professionals<br />for Any Project</h1>
-          <p>From emergency plumbing to a complete home renovation, connect with top-rated local experts ready to help you get the job done right.</p>
-
-          <div className="toggle-slider">
-            <Link to="/register" className="active-need">Need Service</Link>
-            <Link to="/register" className="active-provide">Provide Service</Link>
-          </div>
-        </div>
-      </div>
-
-      <div className="section">
-        <h2 className="section-title">Popular Services</h2>
-        <p className="section-subtitle">Explore highly requested categories</p>
-        <div className="category-grid">
-          {categories.map((cat) => (
-            <Link key={cat.name} to={`/jobs?category=${cat.name}`} className="category-card" style={{ textDecoration: 'none' }}>
-              <div className="category-icon">{cat.icon}</div>
-              <p>{cat.name}</p>
-            </Link>
-          ))}
-        </div>
-      </div>
-
-      <div className="footer">
-        <div>
-          <div className="footer-brand">ServiceSync</div>
-          <p>© 2026 ServiceSync Marketplace. All rights reserved.</p>
-        </div>
-        <div className="footer-links">
-          <a href="#">Privacy Policy</a>
-          <a href="#">Terms of Service</a>
-          <a href="#">Trust &amp; Safety</a>
-          <a href="#">Contact Support</a>
-        </div>
-      </div>
-    </>
-  );
-}
+import MessageThread from './pages/MessageThread';
 
 function App() {
   const [showProfile, setShowProfile] = useState(false);
-  const [user, setUser] = useState(() => JSON.parse(localStorage.getItem('user')));
+  const [activeChat, setActiveChat] = useState(null);
+
+  const getUser = () => {
+    try {
+      const item = localStorage.getItem('user');
+      return item ? JSON.parse(item) : null;
+    } catch {
+      return null;
+    }
+  };
+
+  const [user, setUser] = useState(getUser);
 
   const refreshUser = () => {
-    setUser(JSON.parse(localStorage.getItem('user')));
+    setUser(getUser());
   };
 
   return (
     <>
-      <Navbar onProfileClick={() => setShowProfile(true)} user={user} />
+      <Navbar
+        onProfileClick={() => setShowProfile(true)}
+        user={user}
+        onOpenChat={(chat) => setActiveChat(chat)}
+      />
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/register" element={<Register />} />
@@ -130,7 +58,23 @@ function App() {
         <Route path="/provider-earnings" element={<ProviderEarnings />} />
         <Route path="/provider-schedule" element={<ProviderSchedule />} />
       </Routes>
-      {showProfile && <Profile onClose={() => setShowProfile(false)} onProfileUpdate={refreshUser} />}
+
+      {/* Global Profile Modal */}
+      {showProfile && (
+        <Profile
+          onClose={() => setShowProfile(false)}
+          onProfileUpdate={refreshUser}
+        />
+      )}
+
+      {/* Global Chat / Message Thread Modal from Navbar */}
+      {activeChat && (
+        <MessageThread
+          bookingId={activeChat.bookingId}
+          otherPersonName={activeChat.otherPersonName}
+          onClose={() => setActiveChat(null)}
+        />
+      )}
     </>
   );
 }

@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import CustomerPortalLayout from '../components/CustomerPortalLayout';
 
 function MyJobs() {
   const [jobs, setJobs] = useState([]);
@@ -83,7 +85,7 @@ function MyJobs() {
   };
 
   const deleteJob = async (jobId) => {
-    if (!window.confirm('Are you sure you want to delete this job?')) return;
+    if (!window.confirm('Are you sure you want to delete this job listing?')) return;
 
     setMessage('');
     try {
@@ -94,7 +96,7 @@ function MyJobs() {
       const data = await res.json();
 
       if (res.ok) {
-        setMessage('Job deleted');
+        setMessage('Job deleted successfully');
         fetchJobs();
       } else {
         setMessage(data.message || 'Delete failed');
@@ -136,7 +138,7 @@ function MyJobs() {
       const data = await res.json();
 
       if (res.ok) {
-        setMessage('Quote accepted! A booking has been created — check My Bookings.');
+        setMessage('Quote accepted! A booking has been created — check Booking Requests.');
         setOpenQuotesFor(null);
         fetchJobs();
       } else {
@@ -157,7 +159,7 @@ function MyJobs() {
       const data = await res.json();
 
       if (res.ok) {
-        const updated = quotesByJob[jobId].map(q => q._id === quoteId ? { ...q, status: 'declined' } : q);
+        const updated = (quotesByJob[jobId] || []).map(q => q._id === quoteId ? { ...q, status: 'declined' } : q);
         setQuotesByJob({ ...quotesByJob, [jobId]: updated });
       } else {
         setMessage(data.message || 'Failed to decline quote');
@@ -167,110 +169,157 @@ function MyJobs() {
     }
   };
 
-  if (loading) return <p>Loading your jobs...</p>;
+  if (loading) {
+    return (
+      <CustomerPortalLayout title="My Posted Jobs" subtitle="Loading job listings...">
+        <p style={{ padding: '24px' }}>Loading your jobs...</p>
+      </CustomerPortalLayout>
+    );
+  }
 
   return (
-    <div className="job-list">
-      <h2>My Posted Jobs</h2>
-      {message && <p><b>{message}</b></p>}
-      {jobs.length === 0 && <p>You haven't posted any jobs yet.</p>}
-
-      {jobs.map((job) => (
-        <div key={job._id} className="card">
-          <span className={`status-badge status-${job.status}`}>{job.status}</span>
-
-          {editingId === job._id ? (
-            <div style={{ marginTop: '10px' }}>
-              <input
-                type="text"
-                value={editForm.title}
-                onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
-              />
-              <textarea
-                rows={3}
-                value={editForm.description}
-                onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
-              />
-              <input
-                type="text"
-                value={editForm.category}
-                onChange={(e) => setEditForm({ ...editForm, category: e.target.value })}
-              />
-              <input
-                type="text"
-                value={editForm.location}
-                onChange={(e) => setEditForm({ ...editForm, location: e.target.value })}
-              />
-              <input
-                type="number"
-                min="0"
-                value={editForm.budget}
-                onChange={(e) => setEditForm({ ...editForm, budget: e.target.value })}
-              />
-              <button onClick={() => saveEdit(job._id)}>Save</button>
-              {' '}
-              <button onClick={cancelEditing} style={{ background: 'var(--bg)', color: 'var(--navy)', border: '1px solid var(--border)' }}>Cancel</button>
-            </div>
-          ) : (
-            <>
-              <h3 style={{ marginTop: '10px' }}>{job.title}</h3>
-              <p>{job.description}</p>
-              <p className="meta"><b>Category:</b> {job.category}</p>
-              <p className="meta"><b>Location:</b> {job.location}</p>
-              <p className="meta"><b>Budget:</b> Rs. {job.budget}</p>
-
-              {job.status === 'open' && (
-                <div style={{ marginTop: '10px' }}>
-                  <button onClick={() => toggleQuotes(job._id)}>
-                    {openQuotesFor === job._id ? 'Hide Quotes' : 'View Quotes'}
-                  </button>
-                  {' '}
-                  <button onClick={() => startEditing(job)} style={{ background: 'var(--bg)', color: 'var(--navy)', border: '1px solid var(--border)' }}>Edit</button>
-                  {' '}
-                  <button onClick={() => deleteJob(job._id)} style={{ background: '#B5453A' }}>Delete</button>
-                </div>
-              )}
-
-              {openQuotesFor === job._id && (
-                <div style={{ marginTop: '14px', borderTop: '1px solid var(--border)', paddingTop: '14px' }}>
-                  <p className="eyebrow">Quotes Received</p>
-                  {loadingQuotes && <p className="meta">Loading quotes...</p>}
-                  {!loadingQuotes && (quotesByJob[job._id] || []).length === 0 && (
-                    <p className="meta">No quotes yet.</p>
-                  )}
-                  {(quotesByJob[job._id] || []).map((quote) => (
-                    <div key={quote._id} style={{ padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div>
-                          <p style={{ margin: 0, fontWeight: 600 }}>{quote.provider?.name}</p>
-                          <p className="meta" style={{ margin: 0 }}>
-                            ⭐ {quote.provider?.rating ? quote.provider.rating.toFixed(1) : 'No rating'} · {quote.provider?.location}
-                          </p>
-                        </div>
-                        <p style={{ margin: 0, fontWeight: 700, fontSize: '18px', color: 'var(--primary)' }}>
-                          Rs. {quote.price.toLocaleString()}
-                        </p>
-                      </div>
-                      {quote.message && <p style={{ fontSize: '14px', margin: '6px 0' }}>{quote.message}</p>}
-
-                      {quote.status === 'pending' ? (
-                        <div style={{ marginTop: '6px' }}>
-                          <button onClick={() => acceptQuote(quote._id, job._id)} className="btn-success">Accept & Book</button>
-                          {' '}
-                          <button onClick={() => declineQuote(quote._id, job._id)} style={{ background: '#B5453A' }}>Decline</button>
-                        </div>
-                      ) : (
-                        <span className={`status-badge status-${quote.status}`}>{quote.status}</span>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </>
-          )}
+    <CustomerPortalLayout
+      title="My Posted Jobs"
+      subtitle="Manage your active job posts, review provider bids, and select the best offer."
+    >
+      {message && (
+        <div style={{ padding: '10px 14px', background: 'var(--info-bg)', color: 'var(--primary)', borderRadius: '8px', marginBottom: '16px', fontWeight: 600 }}>
+          {message}
         </div>
-      ))}
-    </div>
+      )}
+
+      {jobs.length === 0 && (
+        <div className="card" style={{ textAlign: 'center', padding: '40px 20px' }}>
+          <span style={{ fontSize: '32px', display: 'block', marginBottom: '8px' }}>📝</span>
+          <p style={{ margin: 0, fontWeight: 600, fontSize: '15px', color: 'var(--navy)' }}>You haven't posted any jobs yet</p>
+          <p className="meta" style={{ margin: '4px 0 16px' }}>Post a job to get quotes from verified local providers.</p>
+          <Link to="/post-job"><button className="btn-success">+ Post Your First Job</button></Link>
+        </div>
+      )}
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        {jobs.map((job) => (
+          <div key={job._id} className="card">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span className={`status-badge status-${job.status}`}>{job.status}</span>
+              <span style={{ fontSize: '15px', fontWeight: 700, color: 'var(--navy)' }}>
+                Budget: Rs. {job.budget?.toLocaleString()}
+              </span>
+            </div>
+
+            {editingId === job._id ? (
+              <div style={{ marginTop: '14px', background: 'var(--bg)', padding: '16px', borderRadius: '8px' }}>
+                <label style={{ fontSize: '12px', fontWeight: 600 }}>Job Title</label>
+                <input
+                  type="text"
+                  value={editForm.title}
+                  onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+                />
+                <label style={{ fontSize: '12px', fontWeight: 600 }}>Description</label>
+                <textarea
+                  rows={3}
+                  value={editForm.description}
+                  onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                />
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <div>
+                    <label style={{ fontSize: '12px', fontWeight: 600 }}>Category</label>
+                    <input
+                      type="text"
+                      value={editForm.category}
+                      onChange={(e) => setEditForm({ ...editForm, category: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '12px', fontWeight: 600 }}>Location</label>
+                    <input
+                      type="text"
+                      value={editForm.location}
+                      onChange={(e) => setEditForm({ ...editForm, location: e.target.value })}
+                    />
+                  </div>
+                </div>
+                <label style={{ fontSize: '12px', fontWeight: 600 }}>Budget (Rs.)</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={editForm.budget}
+                  onChange={(e) => setEditForm({ ...editForm, budget: e.target.value })}
+                />
+                <div style={{ display: 'flex', gap: '8px', marginTop: '6px' }}>
+                  <button onClick={() => saveEdit(job._id)}>Save Changes</button>
+                  <button onClick={cancelEditing} style={{ background: 'white', color: 'var(--navy)', border: '1px solid var(--border)' }}>Cancel</button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <h3 style={{ marginTop: '12px', marginBottom: '6px', fontSize: '16px' }}>{job.title}</h3>
+                <p style={{ color: 'var(--slate)', fontSize: '14px', margin: '0 0 10px' }}>{job.description}</p>
+                <div style={{ display: 'flex', gap: '16px', fontSize: '13px', color: 'var(--slate)' }}>
+                  <span>📁 <b>Category:</b> {job.category}</span>
+                  <span>📍 <b>Location:</b> {job.location || 'Local / Remote'}</span>
+                </div>
+
+                {job.status === 'open' && (
+                  <div style={{ marginTop: '14px', paddingTop: '12px', borderTop: '1px solid var(--border)', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    <button onClick={() => toggleQuotes(job._id)}>
+                      {openQuotesFor === job._id ? 'Hide Received Quotes' : '💬 View Quotes'}
+                    </button>
+                    <button onClick={() => startEditing(job)} style={{ background: 'var(--bg)', color: 'var(--navy)', border: '1px solid var(--border)' }}>Edit</button>
+                    <button onClick={() => deleteJob(job._id)} style={{ background: '#B5453A' }}>Delete</button>
+                  </div>
+                )}
+
+                {openQuotesFor === job._id && (
+                  <div style={{ marginTop: '16px', borderTop: '1px solid var(--border)', paddingTop: '14px' }}>
+                    <p className="eyebrow">Provider Bids &amp; Quotes</p>
+                    {loadingQuotes && <p className="meta">Loading quotes...</p>}
+                    {!loadingQuotes && (quotesByJob[job._id] || []).length === 0 && (
+                      <p className="meta" style={{ padding: '10px 0' }}>No quotes received from providers yet.</p>
+                    )}
+                    {(quotesByJob[job._id] || []).map((quote) => (
+                      <div key={quote._id} style={{ padding: '12px', background: 'var(--bg)', borderRadius: '8px', marginBottom: '8px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div>
+                            <p style={{ margin: 0, fontWeight: 700, color: 'var(--navy)' }}>{quote.provider?.name}</p>
+                            <p className="meta" style={{ margin: '2px 0 0' }}>
+                              ⭐ {quote.provider?.rating ? quote.provider.rating.toFixed(1) : 'New Provider'} · {quote.provider?.location || 'Local'}
+                            </p>
+                          </div>
+                          <span style={{ fontWeight: 700, fontSize: '18px', color: 'var(--primary)' }}>
+                            Rs. {quote.price?.toLocaleString()}
+                          </span>
+                        </div>
+                        {quote.message && (
+                          <p style={{ fontSize: '13px', margin: '8px 0', color: 'var(--slate)', fontStyle: 'italic' }}>
+                            "{quote.message}"
+                          </p>
+                        )}
+
+                        {quote.status === 'pending' ? (
+                          <div style={{ marginTop: '10px', display: 'flex', gap: '8px' }}>
+                            <button onClick={() => acceptQuote(quote._id, job._id)} className="btn-success">
+                              ✓ Accept &amp; Hire
+                            </button>
+                            <button onClick={() => declineQuote(quote._id, job._id)} style={{ background: 'white', color: 'var(--danger)', border: '1px solid var(--border)' }}>
+                              Decline
+                            </button>
+                          </div>
+                        ) : (
+                          <span className={`status-badge status-${quote.status}`} style={{ marginTop: '8px' }}>
+                            {quote.status}
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        ))}
+      </div>
+    </CustomerPortalLayout>
   );
 }
 
