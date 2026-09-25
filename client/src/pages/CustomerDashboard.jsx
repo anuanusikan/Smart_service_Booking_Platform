@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import CustomerPortalLayout from '../components/CustomerPortalLayout';
+import { jobsApi, bookingsApi } from '../services/api';
 
 function CustomerDashboard() {
   const [jobs, setJobs] = useState([]);
@@ -15,16 +16,11 @@ function CustomerDashboard() {
       return null;
     }
   })();
-  const token = localStorage.getItem('token');
 
   useEffect(() => {
     Promise.all([
-      fetch('http://localhost:5000/api/jobs/mine', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      }).then(res => res.json()),
-      fetch('http://localhost:5000/api/bookings/mine', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      }).then(res => res.json())
+      jobsApi.getMine(),
+      bookingsApi.getMine()
     ])
       .then(([jobsData, bookingsData]) => {
         setJobs(Array.isArray(jobsData) ? jobsData : []);

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import MessageThread from './MessageThread';
 import ProviderPortalLayout from '../components/ProviderPortalLayout';
 import CustomerPortalLayout from '../components/CustomerPortalLayout';
+import { bookingsApi, reviewsApi, apiDelete } from '../services/api';
 
 function MyBookings() {
   const [bookings, setBookings] = useState([]);
@@ -25,14 +26,8 @@ function MyBookings() {
 
   const fetchBookings = () => {
     Promise.all([
-      fetch('http://localhost:5000/api/bookings/mine', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      }).then(res => res.json()),
-      user?.role === 'customer'
-        ? fetch('http://localhost:5000/api/reviews/mine', {
-            headers: { 'Authorization': `Bearer ${token}` }
-          }).then(res => res.json())
-        : Promise.resolve([])
+      bookingsApi.getMine(),
+      user?.role === 'customer' ? reviewsApi.getMine() : Promise.resolve([])
     ])
       .then(([bookingsData, reviewedIds]) => {
         setBookings(Array.isArray(bookingsData) ? bookingsData : []);
@@ -54,65 +49,34 @@ function MyBookings() {
 
   const handleAction = async (bookingId, status) => {
     setMessage('');
-    try {
-      const res = await fetch(`http://localhost:5000/api/bookings/${bookingId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ status })
-      });
-      const data = await res.json();
-
-      if (res.ok) {
-        setMessage(`Booking ${status}`);
-        fetchBookings();
-      } else {
-        setMessage(data.message || 'Action failed');
-      }
-    } catch (err) {
-      setMessage('Server error. Please try again.');
+    const { ok, data } = await bookingsApi.updateStatus(bookingId, status);
+    if (ok) {
+      setMessage(`Booking ${status}`);
+      fetchBookings();
+    } else {
+      setMessage(data?.message || 'Action failed');
     }
   };
 
   const handleCancel = async (bookingId) => {
     setMessage('');
-    try {
-      const res = await fetch(`http://localhost:5000/api/bookings/${bookingId}/cancel`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const data = await res.json();
-
-      if (res.ok) {
-        setMessage('Request cancelled');
-        fetchBookings();
-      } else {
-        setMessage(data.message || 'Failed to cancel request');
-      }
-    } catch (err) {
-      setMessage('Server error. Please try again.');
+    const { ok, data } = await apiDelete(`/bookings/${bookingId}/cancel`);
+    if (ok) {
+      setMessage('Request cancelled');
+      fetchBookings();
+    } else {
+      setMessage(data?.message || 'Failed to cancel request');
     }
   };
 
   const handleDelete = async (bookingId) => {
     setMessage('');
-    try {
-      const res = await fetch(`http://localhost:5000/api/bookings/${bookingId}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const data = await res.json();
-
-      if (res.ok) {
-        setMessage('Booking removed from history');
-        fetchBookings();
-      } else {
-        setMessage(data.message || 'Failed to remove booking');
-      }
-    } catch (err) {
-      setMessage('Server error. Please try again.');
+    const { ok, data } = await apiDelete(`/bookings/${bookingId}`);
+    if (ok) {
+      setMessage('Booking removed from history');
+      fetchBookings();
+    } else {
+      setMessage(data?.message || 'Failed to remove booking');
     }
   };
 
@@ -135,29 +99,17 @@ function MyBookings() {
       return;
     }
 
-    try {
-      const res = await fetch('http://localhost:5000/api/reviews', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          bookingId,
-          rating: Number(form.rating),
-          comment: form.comment || ''
-        })
-      });
-      const data = await res.json();
+    const { ok, data } = await reviewsApi.create({
+      bookingId,
+      rating: Number(form.rating),
+      comment: form.comment || ''
+    });
 
-      if (res.ok) {
-        setMessage('Review submitted, thank you!');
-        setReviewedBookings({ ...reviewedBookings, [bookingId]: true });
-      } else {
-        setMessage(data.message || 'Failed to submit review');
-      }
-    } catch (err) {
-      setMessage('Server error. Please try again.');
+    if (ok) {
+      setMessage('Review submitted, thank you!');
+      setReviewedBookings({ ...reviewedBookings, [bookingId]: true });
+    } else {
+      setMessage(data?.message || 'Failed to submit review');
     }
   };
 
@@ -182,42 +134,44 @@ function MyBookings() {
   );
 
   const bookingsBody = (
-    <>
-      <div className="tab-nav-bar">
-        <button
-          className={`tab-btn${activeTab === 'active' ? ' active' : ''}`}
-          onClick={() => setActiveTab('active')}
-        >
-          Active ({activeBookings.length})
-        </button>
-        <button
-          className={`tab-btn${activeTab === 'history' ? ' active' : ''}`}
-          onClick={() => setActiveTab('history')}
-        >
-          History ({historyBookings.length})
-        </button>
+    <div className="centered-job-section">
+      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '24px' }}>
+        <div className="tab-nav-bar" style={{ marginBottom: 0 }}>
+          <button
+            className={`tab-btn${activeTab === 'active' ? ' active' : ''}`}
+            onClick={() => setActiveTab('active')}
+          >
+            Active ({activeBookings.length})
+          </button>
+          <button
+            className={`tab-btn${activeTab === 'history' ? ' active' : ''}`}
+            onClick={() => setActiveTab('history')}
+          >
+            History ({historyBookings.length})
+          </button>
+        </div>
       </div>
 
       {message && (
-        <div style={{ padding: '10px 14px', background: 'var(--info-bg)', color: 'var(--primary)', borderRadius: '8px', marginBottom: '16px', fontWeight: 600 }}>
+        <div style={{ padding: '10px 14px', background: 'var(--info-bg)', color: 'var(--primary)', borderRadius: '8px', marginBottom: '16px', fontWeight: 600, maxWidth: '820px' }}>
           {message}
         </div>
       )}
 
       {activeTab === 'active' && activeBookings.length === 0 && (
-        <div className="card" style={{ textAlign: 'center', padding: '36px 20px' }}>
+        <div className="card" style={{ textAlign: 'center', padding: '36px 20px', maxWidth: '820px' }}>
           <p style={{ margin: 0, fontWeight: 600, color: 'var(--navy)' }}>No active requests or bookings.</p>
           <p className="meta" style={{ margin: '4px 0 0' }}>New booking requests and accepted jobs will appear here.</p>
         </div>
       )}
 
       {activeTab === 'history' && historyBookings.length === 0 && (
-        <div className="card" style={{ textAlign: 'center', padding: '36px 20px' }}>
+        <div className="card" style={{ textAlign: 'center', padding: '36px 20px', maxWidth: '820px' }}>
           <p style={{ margin: 0, fontWeight: 600, color: 'var(--navy)' }}>No booking history yet.</p>
         </div>
       )}
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+      <div className="job-cards-container">
         {activeTab === 'active' && activeBookings.map((booking) => (
           <div key={booking._id} className="card">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -326,7 +280,7 @@ function MyBookings() {
           onClose={() => setActiveChat(null)}
         />
       )}
-    </>
+    </div>
   );
 
   if (user?.role === 'provider') {

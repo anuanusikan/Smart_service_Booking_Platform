@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import CustomerPortalLayout from '../components/CustomerPortalLayout';
+import { apiUpload } from '../services/api';
 
 function PostJob() {
   const navigate = useNavigate();
@@ -58,24 +59,16 @@ function PostJob() {
     images.forEach((img) => data.append('images', img));
 
     try {
-      const res = await fetch('http://localhost:5000/api/jobs', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
-        body: data
-      });
-
-      const result = await res.json();
+      const { ok, data: result } = await apiUpload('/jobs', data, 'POST');
       setUploading(false);
 
-      if (res.ok) {
+      if (ok) {
         setMessage({ type: 'success', text: '✓ Job posted successfully! Redirecting to My Jobs...' });
         setTimeout(() => navigate('/my-jobs'), 1200);
       } else {
-        setMessage({ type: 'error', text: result.message || 'Failed to post job' });
+        setMessage({ type: 'error', text: result?.message || 'Failed to post job' });
       }
-    } catch (err) {
+    } catch {
       setUploading(false);
       setMessage({ type: 'error', text: 'Server error. Please try again.' });
     }

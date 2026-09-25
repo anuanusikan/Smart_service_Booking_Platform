@@ -1,10 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 function Navbar({ onProfileClick, user, onOpenChat }) {
   const navigate = useNavigate();
-  const location = useLocation();
-  const isHomePage = location.pathname === '/';
 
   const [openMenu, setOpenMenu] = useState(null); // null | 'messages' | 'notifications'
   const [notifTab, setNotifTab] = useState('alerts'); // 'alerts' | 'settings'

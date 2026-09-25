@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import ProviderPortalLayout from '../components/ProviderPortalLayout';
+import { jobsApi, bookingsApi, reviewsApi } from '../services/api';
 
 function ProviderDashboard() {
   const [jobs, setJobs] = useState([]);
@@ -16,17 +17,11 @@ function ProviderDashboard() {
       return null;
     }
   })();
-  const token = localStorage.getItem('token');
-
   useEffect(() => {
     Promise.all([
-      fetch('http://localhost:5000/api/jobs/matched', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      }).then(res => res.json()),
-      fetch('http://localhost:5000/api/bookings/mine', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      }).then(res => res.json()),
-      fetch(`http://localhost:5000/api/reviews/provider/${user?.id || ''}`).then(res => res.json())
+      jobsApi.getMatched(),
+      bookingsApi.getMine(),
+      user?.id ? reviewsApi.getByProvider(user.id) : Promise.resolve([])
     ])
       .then(([jobsData, bookingsData, reviewsData]) => {
         setJobs(Array.isArray(jobsData) ? jobsData : []);

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { authApi } from '../services/api';
 
 function Login({ onLoginSuccess }) {
   const navigate = useNavigate();
@@ -20,15 +21,9 @@ function Login({ onLoginSuccess }) {
     setMessage('');
 
     try {
-      const res = await fetch('http://localhost:5000/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
-      });
+      const { ok, data } = await authApi.login(formData.email, formData.password);
 
-      const data = await res.json();
-
-      if (res.ok) {
+      if (ok) {
         localStorage.setItem('token', data.token);
         localStorage.setItem('user', JSON.stringify(data.user));
         if (onLoginSuccess) onLoginSuccess();
@@ -36,9 +31,9 @@ function Login({ onLoginSuccess }) {
         const destination = data.user.role === 'provider' ? '/provider-dashboard' : '/dashboard';
         setTimeout(() => navigate(destination), 1000);
       } else {
-        setMessage(data.message || 'Login failed');
+        setMessage(data?.message || 'Login failed');
       }
-    } catch (err) {
+    } catch {
       setMessage('Server error. Please try again.');
     }
   };

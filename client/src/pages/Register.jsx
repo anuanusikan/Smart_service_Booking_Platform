@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { apiPost } from '../services/api';
 
 function Register() {
   const navigate = useNavigate();
@@ -35,21 +36,15 @@ function Register() {
     }
 
     try {
-      const res = await fetch('http://localhost:5000/api/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
-      });
+      const { ok, data } = await apiPost('/auth/register', formData, false);
 
-      const data = await res.json();
-
-      if (res.ok) {
+      if (ok) {
         setMessage('Registration successful! Redirecting to login...');
         setTimeout(() => navigate('/login'), 1500);
       } else {
-        setMessage(data.message || 'Registration failed');
+        setMessage(data?.message || 'Registration failed');
       }
-    } catch (err) {
+    } catch {
       setMessage('Server error. Please try again.');
     }
   };
