@@ -7,7 +7,9 @@ const router = express.Router();
 // GET all notifications for the current user
 router.get('/', authMiddleware, async (req, res) => {
   try {
-    const notifications = await Notification.find({ recipient: req.user.id })
+    const notifications = await Notification.find({
+      recipient: req.user.id
+    })
       .populate('sender', 'name role profilePicture')
       .sort({ createdAt: -1 })
       .limit(30);
@@ -17,9 +19,40 @@ router.get('/', authMiddleware, async (req, res) => {
       read: false
     });
 
-    res.json({ notifications, unreadCount });
+    res.json({
+      notifications,
+      unreadCount
+    });
   } catch (err) {
-    res.status(500).json({ message: 'Server error', error: err.message });
+    res.status(500).json({
+      message: 'Server error',
+      error: err.message
+    });
+  }
+});
+
+// MARK ALL notifications as read
+// IMPORTANT: This must come before /:id/read
+router.put('/read-all', authMiddleware, async (req, res) => {
+  try {
+    await Notification.updateMany(
+      {
+        recipient: req.user.id,
+        read: false
+      },
+      {
+        read: true
+      }
+    );
+
+    res.json({
+      message: 'All notifications marked as read'
+    });
+  } catch (err) {
+    res.status(500).json({
+      message: 'Server error',
+      error: err.message
+    });
   }
 });
 
@@ -27,29 +60,52 @@ router.get('/', authMiddleware, async (req, res) => {
 router.put('/:id/read', authMiddleware, async (req, res) => {
   try {
     const notification = await Notification.findOneAndUpdate(
-      { _id: req.params.id, recipient: req.user.id },
-      { read: true },
-      { new: true }
+      {
+        _id: req.params.id,
+        recipient: req.user.id
+      },
+      {
+        read: true
+      },
+      {
+        new: true
+      }
     );
+
     if (!notification) {
-      return res.status(404).json({ message: 'Notification not found' });
+      return res.status(404).json({
+        message: 'Notification not found'
+      });
     }
-    res.json({ message: 'Notification marked as read', notification });
+
+    res.json({
+      message: 'Notification marked as read',
+      notification
+    });
   } catch (err) {
-    res.status(500).json({ message: 'Server error', error: err.message });
+    res.status(500).json({
+      message: 'Server error',
+      error: err.message
+    });
   }
 });
 
-// MARK ALL notifications as read
-router.put('/read-all', authMiddleware, async (req, res) => {
+// CLEAR ALL notifications for current user
+// IMPORTANT: This must come before /:id
+router.delete('/clear-all', authMiddleware, async (req, res) => {
   try {
-    await Notification.updateMany(
-      { recipient: req.user.id, read: false },
-      { read: true }
-    );
-    res.json({ message: 'All notifications marked as read' });
+    await Notification.deleteMany({
+      recipient: req.user.id
+    });
+
+    res.json({
+      message: 'All notifications cleared'
+    });
   } catch (err) {
-    res.status(500).json({ message: 'Server error', error: err.message });
+    res.status(500).json({
+      message: 'Server error',
+      error: err.message
+    });
   }
 });
 
@@ -60,22 +116,21 @@ router.delete('/:id', authMiddleware, async (req, res) => {
       _id: req.params.id,
       recipient: req.user.id
     });
-    if (!notification) {
-      return res.status(404).json({ message: 'Notification not found' });
-    }
-    res.json({ message: 'Notification removed' });
-  } catch (err) {
-    res.status(500).json({ message: 'Server error', error: err.message });
-  }
-});
 
-// CLEAR ALL notifications for current user
-router.delete('/clear-all', authMiddleware, async (req, res) => {
-  try {
-    await Notification.deleteMany({ recipient: req.user.id });
-    res.json({ message: 'All notifications cleared' });
+    if (!notification) {
+      return res.status(404).json({
+        message: 'Notification not found'
+      });
+    }
+
+    res.json({
+      message: 'Notification removed'
+    });
   } catch (err) {
-    res.status(500).json({ message: 'Server error', error: err.message });
+    res.status(500).json({
+      message: 'Server error',
+      error: err.message
+    });
   }
 });
 

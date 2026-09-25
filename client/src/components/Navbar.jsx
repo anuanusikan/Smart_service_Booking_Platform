@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { messagesApi,notificationsApi} from '../services/api';
 
 function Navbar({ onProfileClick, user, onOpenChat }) {
   const navigate = useNavigate();
@@ -44,10 +45,7 @@ function Navbar({ onProfileClick, user, onOpenChat }) {
   const fetchConversations = () => {
     if (!token || !user) return;
     setLoadingChats(true);
-    fetch('http://localhost:5000/api/messages/conversations/mine', {
-      headers: { 'Authorization': `Bearer ${token}` }
-    })
-      .then(res => res.json())
+    messagesApi.getConversations()
       .then(data => {
         setConversations(Array.isArray(data) ? data : []);
         setLoadingChats(false);
@@ -59,10 +57,7 @@ function Navbar({ onProfileClick, user, onOpenChat }) {
   const fetchNotifications = () => {
     if (!token || !user) return;
     setLoadingNotifs(true);
-    fetch('http://localhost:5000/api/notifications', {
-      headers: { 'Authorization': `Bearer ${token}` }
-    })
-      .then(res => res.json())
+    notificationsApi.getNotifications()
       .then(data => {
         if (data && Array.isArray(data.notifications)) {
           setNotifications(data.notifications);
@@ -99,10 +94,7 @@ function Navbar({ onProfileClick, user, onOpenChat }) {
 
   const handleMarkAsRead = async (notifId, link) => {
     try {
-      await fetch(`http://localhost:5000/api/notifications/${notifId}/read`, {
-        method: 'PUT',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+      await notificationsApi.markAsRead(notifId);
       setNotifications(prev => prev.map(n => n._id === notifId ? { ...n, read: true } : n));
       setUnreadNotifs(prev => Math.max(0, prev - 1));
     } catch (err) {
@@ -117,10 +109,7 @@ function Navbar({ onProfileClick, user, onOpenChat }) {
 
   const handleMarkAllRead = async () => {
     try {
-      await fetch('http://localhost:5000/api/notifications/read-all', {
-        method: 'PUT',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+      await notificationsApi.markAllAsRead();
       setNotifications(prev => prev.map(n => ({ ...n, read: true })));
       setUnreadNotifs(0);
     } catch (err) {
@@ -130,10 +119,7 @@ function Navbar({ onProfileClick, user, onOpenChat }) {
 
   const handleClearAll = async () => {
     try {
-      await fetch('http://localhost:5000/api/notifications/clear-all', {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+      await notificationsApi.clearAll();
       setNotifications([]);
       setUnreadNotifs(0);
     } catch (err) {

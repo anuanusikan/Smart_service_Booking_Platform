@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { apiPost } from '../services/api';
+import { authApi } from '../services/api';
 
 function Register() {
   const navigate = useNavigate();
@@ -36,7 +36,7 @@ function Register() {
     }
 
     try {
-      const { ok, data } = await apiPost('/auth/register', formData, false);
+      const { ok, data } = await authApi.register(formData);
 
       if (ok) {
         setMessage('Registration successful! Redirecting to login...');

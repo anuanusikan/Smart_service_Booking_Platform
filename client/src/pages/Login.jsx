@@ -21,7 +21,8 @@ function Login({ onLoginSuccess }) {
     setMessage('');
 
     try {
-      const { ok, data } = await authApi.login(formData.email, formData.password);
+      
+      const { ok, data } = await authApi.login(formData.email,formData.password,loginAs);
 
       if (ok) {
         localStorage.setItem('token', data.token);

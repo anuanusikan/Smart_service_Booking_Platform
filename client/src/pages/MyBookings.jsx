@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import MessageThread from './MessageThread';
 import ProviderPortalLayout from '../components/ProviderPortalLayout';
 import CustomerPortalLayout from '../components/CustomerPortalLayout';
-import { bookingsApi, reviewsApi, apiDelete } from '../services/api';
+import { bookingsApi, reviewsApi } from '../services/api';
 
 function MyBookings() {
   const [bookings, setBookings] = useState([]);
@@ -60,7 +60,7 @@ function MyBookings() {
 
   const handleCancel = async (bookingId) => {
     setMessage('');
-    const { ok, data } = await apiDelete(`/bookings/${bookingId}/cancel`);
+    const { ok, data } = await bookingsApi.cancel(bookingId);
     if (ok) {
       setMessage('Request cancelled');
       fetchBookings();
@@ -71,7 +71,7 @@ function MyBookings() {
 
   const handleDelete = async (bookingId) => {
     setMessage('');
-    const { ok, data } = await apiDelete(`/bookings/${bookingId}`);
+    const { ok, data } = await bookingsApi.removeFromHistory(bookingId);
     if (ok) {
       setMessage('Booking removed from history');
       fetchBookings();

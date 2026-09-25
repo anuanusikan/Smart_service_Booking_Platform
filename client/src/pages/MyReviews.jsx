@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import ProviderPortalLayout from '../components/ProviderPortalLayout';
+import { reviewsApi } from '../services/api';
 
 function MyReviews() {
   const [reviews, setReviews] = useState([]);
@@ -13,19 +14,19 @@ function MyReviews() {
     }
   })();
 
-  useEffect(() => {
-    if (!user?.id) {
+ useEffect(() => {
+  if (!user?.id) {
+    setLoading(false);
+    return;
+  }
+
+  reviewsApi.getByProvider(user.id)
+    .then(data => {
+      setReviews(Array.isArray(data) ? data : []);
       setLoading(false);
-      return;
-    }
-    fetch(`http://localhost:5000/api/reviews/provider/${user.id}`)
-      .then(res => res.json())
-      .then(data => {
-        setReviews(Array.isArray(data) ? data : []);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
-  }, []);
+    })
+    .catch(() => setLoading(false));
+}, []);
 
   const avgRating = reviews.length
     ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1)

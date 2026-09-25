@@ -46,13 +46,22 @@ router.post('/register', async (req, res) => {
 // LOGIN
 router.post('/login', async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, role } = req.body;
 
     // Find user by email
     const user = await User.findOne({ email });
-    if (!user) {
-      return res.status(400).json({ message: 'Invalid email or password' });
-    }
+
+if (!user) {
+  return res.status(400).json({
+    message: 'Invalid email or password'
+  });
+}
+
+if (role && user.role !== role) {
+  return res.status(400).json({
+    message: `This account is registered as a ${user.role}.`
+  });
+}
 
     // Compare entered password with stored hash
     const isMatch = await bcrypt.compare(password, user.password);

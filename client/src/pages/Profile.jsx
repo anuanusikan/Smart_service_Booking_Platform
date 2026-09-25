@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { authApi } from '../services/api';
 
 function Profile({ onClose, onProfileUpdate }) {
   const navigate = useNavigate();
@@ -29,27 +30,29 @@ function Profile({ onClose, onProfileUpdate }) {
 
   const token = localStorage.getItem('token');
 
-  const fetchProfile = () => {
-    fetch('http://localhost:5000/api/auth/me', {
-      headers: { 'Authorization': `Bearer ${token}` }
-    })
-      .then(res => res.json())
-      .then(data => {
-        setProfile(data);
-        setForm({
-          name: data.name || '',
-          phone: data.phone || '',
-          location: data.location || '',
-          hourlyRate: data.hourlyRate || '',
-          skills: (data.skills || []).join(', ')
-        });
-        if (data.profilePicture) {
-          setPicPreview(data.profilePicture);
-        }
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
-  };
+  const fetchProfile = async () => {
+  try {
+    const data = await authApi.getMe();
+
+    setProfile(data);
+
+    setForm({
+      name: data.name || '',
+      phone: data.phone || '',
+      location: data.location || '',
+      hourlyRate: data.hourlyRate || '',
+      skills: (data.skills || []).join(', ')
+    });
+
+    if (data.profilePicture) {
+      setPicPreview(data.profilePicture);
+    }
+
+    setLoading(false);
+  } catch {
+    setLoading(false);
+  }
+};
 
   useEffect(() => {
     fetchProfile();
@@ -73,14 +76,9 @@ function Profile({ onClose, onProfileUpdate }) {
     if (picFile) data.append('profilePicture', picFile);
 
     try {
-      const res = await fetch('http://localhost:5000/api/auth/me', {
-        method: 'PUT',
-        headers: { 'Authorization': `Bearer ${token}` },
-        body: data
-      });
-      const result = await res.json();
+      const result = await authApi.updateProfile(data);
 
-      if (res.ok) {
+        if (result.ok) {
         setMessage({ type: 'success', text: '✓ Profile updated successfully.' });
         
         const storedUser = JSON.parse(localStorage.getItem('user') || '{}');

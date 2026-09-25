@@ -1,24 +1,24 @@
 import { useState, useEffect, useRef } from 'react';
+import { messagesApi } from '../services/api';
 
-function MessageThread({ bookingId, otherPersonName, onClose }) {
+async function MessageThread({ bookingId, otherPersonName, onClose }) {
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState('');
   const [loading, setLoading] = useState(true);
-  const token = localStorage.getItem('token');
+  
   const user = JSON.parse(localStorage.getItem('user'));
   const bottomRef = useRef(null);
 
-  const fetchMessages = () => {
-    fetch(`http://localhost:5000/api/messages/${bookingId}`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    })
-      .then(res => res.json())
-      .then(data => {
-        setMessages(Array.isArray(data) ? data : []);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
-  };
+ const fetchMessages = async () => {
+  try {
+    const data = await messagesApi.getThread(bookingId);
+
+    setMessages(Array.isArray(data) ? data : []);
+    setLoading(false);
+  } catch {
+    setLoading(false);
+  }
+};
 
   useEffect(() => {
     fetchMessages();
@@ -30,29 +30,12 @@ function MessageThread({ bookingId, otherPersonName, onClose }) {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const sendMessage = async (e) => {
-    e.preventDefault();
-    if (!text.trim()) return;
+ const  { ok, data } = await messagesApi.send(bookingId, text);
 
-    try {
-      const res = await fetch(`http://localhost:5000/api/messages/${bookingId}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ text })
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setMessages([...messages, data]);
-        setText('');
-      }
-    } catch (err) {
-      // silently fail, user can retry
-    }
-  };
-
+if (ok) {
+  setMessages(prev => [...prev, data]);
+  setText('');
+}
   return (
     <div
       onClick={onClose}

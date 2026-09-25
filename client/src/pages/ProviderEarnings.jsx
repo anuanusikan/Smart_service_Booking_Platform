@@ -1,23 +1,21 @@
 import { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import ProviderPortalLayout from '../components/ProviderPortalLayout';
+import { bookingsApi } from '../services/api';
 
 function ProviderEarnings() {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
-  const token = localStorage.getItem('token');
+ 
 
   useEffect(() => {
-    fetch('http://localhost:5000/api/bookings/mine', {
-      headers: { 'Authorization': `Bearer ${token}` }
+  bookingsApi.getMine()
+    .then(data => {
+      setBookings(Array.isArray(data) ? data : []);
+      setLoading(false);
     })
-      .then(res => res.json())
-      .then(data => {
-        setBookings(Array.isArray(data) ? data : []);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
-  }, []);
+    .catch(() => setLoading(false));
+}, []);
 
   if (loading) {
     return (

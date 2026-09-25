@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
+import { authApi, reviewsApi } from '../services/api';
 
 function ProviderProfile() {
   const { id } = useParams();
@@ -10,9 +11,9 @@ function ProviderProfile() {
 
   useEffect(() => {
     Promise.all([
-      fetch(`http://localhost:5000/api/auth/provider/${id}`).then(res => res.json()),
-      fetch(`http://localhost:5000/api/reviews/provider/${id}`).then(res => res.json())
-    ])
+  authApi.getProvider(id),
+  reviewsApi.getByProvider(id)
+])
       .then(([providerData, reviewsData]) => {
         setProvider(providerData);
         setReviews(Array.isArray(reviewsData) ? reviewsData : []);
