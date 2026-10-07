@@ -31,28 +31,41 @@ function Profile({ onClose, onProfileUpdate }) {
   const token = localStorage.getItem('token');
 
   const fetchProfile = async () => {
-  try {
-    const data = await authApi.getMe();
+    try {
+      const data = await authApi.getMe();
+      if (data) {
+        setProfile(data);
 
-    setProfile(data);
+        setForm({
+          name: data.name || '',
+          phone: data.phone || '',
+          location: data.location || '',
+          hourlyRate: data.hourlyRate || '',
+          skills: (data.skills || []).join(', ')
+        });
 
-    setForm({
-      name: data.name || '',
-      phone: data.phone || '',
-      location: data.location || '',
-      hourlyRate: data.hourlyRate || '',
-      skills: (data.skills || []).join(', ')
-    });
+        if (data.profilePicture) {
+          setPicPreview(data.profilePicture);
+        }
 
-    if (data.profilePicture) {
-      setPicPreview(data.profilePicture);
+        // Keep localStorage and app state synced
+        const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
+        if (storedUser && (storedUser.profilePicture !== data.profilePicture || storedUser.name !== data.name)) {
+          const syncedUser = {
+            ...storedUser,
+            name: data.name || storedUser.name,
+            profilePicture: data.profilePicture || ''
+          };
+          localStorage.setItem('user', JSON.stringify(syncedUser));
+          window.dispatchEvent(new Event('userProfileUpdated'));
+        }
+      }
+
+      setLoading(false);
+    } catch {
+      setLoading(false);
     }
-
-    setLoading(false);
-  } catch {
-    setLoading(false);
-  }
-};
+  };
 
   useEffect(() => {
     fetchProfile();
@@ -78,24 +91,27 @@ function Profile({ onClose, onProfileUpdate }) {
     try {
       const result = await authApi.updateProfile(data);
 
-        if (result.ok) {
+      if (result.ok) {
         setMessage({ type: 'success', text: '✓ Profile updated successfully.' });
-        
+
+        const updatedData = result.data?.user || result.user || {};
         const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
         const updatedUser = {
           ...storedUser,
-          name: result.user.name,
-          profilePicture: result.user.profilePicture || storedUser.profilePicture || ''
+          name: updatedData.name || storedUser.name,
+          profilePicture: updatedData.profilePicture !== undefined ? updatedData.profilePicture : (storedUser.profilePicture || '')
         };
         localStorage.setItem('user', JSON.stringify(updatedUser));
+        window.dispatchEvent(new Event('userProfileUpdated'));
 
-        if (onProfileUpdate) onProfileUpdate();
+        if (onProfileUpdate) onProfileUpdate(updatedUser);
         setEditing(false);
         fetchProfile();
       } else {
-        setMessage({ type: 'error', text: result.message || 'Update failed' });
+        setMessage({ type: 'error', text: result.data?.message || result.message || 'Update failed' });
       }
     } catch (err) {
+      console.error('Profile update error:', err);
       setMessage({ type: 'error', text: 'Server error. Please try again.' });
     } finally {
       setSaving(false);

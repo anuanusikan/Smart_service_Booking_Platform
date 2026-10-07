@@ -1,17 +1,48 @@
+import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { authApi } from '../services/api';
 
 function ProviderPortalLayout({ children, title, subtitle, extraAction }) {
   const location = useLocation();
   const currentPath = location.pathname;
 
-  const user = (() => {
+  const readUser = () => {
     try {
       const item = localStorage.getItem('user');
       return item ? JSON.parse(item) : null;
     } catch {
       return null;
     }
-  })();
+  };
+
+  const [user, setUser] = useState(readUser);
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      setUser(readUser());
+    };
+
+    window.addEventListener('userProfileUpdated', handleUpdate);
+    window.addEventListener('storage', handleUpdate);
+
+    // Sync with backend on mount if profile picture is missing
+    const token = localStorage.getItem('token');
+    if (token) {
+      authApi.getMe().then((me) => {
+        if (me && me.profilePicture && me.profilePicture !== user?.profilePicture) {
+          const stored = readUser() || {};
+          const synced = { ...stored, profilePicture: me.profilePicture };
+          localStorage.setItem('user', JSON.stringify(synced));
+          setUser(synced);
+        }
+      }).catch(() => {});
+    }
+
+    return () => {
+      window.removeEventListener('userProfileUpdated', handleUpdate);
+      window.removeEventListener('storage', handleUpdate);
+    };
+  }, []);
 
   const navItems = [
     { label: 'Dashboard', path: '/provider-dashboard', icon: '📊' },
@@ -42,6 +73,9 @@ function ProviderPortalLayout({ children, title, subtitle, extraAction }) {
               <img
                 src={user.profilePicture}
                 alt={user?.name || 'Provider'}
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none';
+                }}
                 style={{
                   width: '64px',
                   height: '64px',
@@ -51,25 +85,24 @@ function ProviderPortalLayout({ children, title, subtitle, extraAction }) {
                   boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
                 }}
               />
-            ) : (
-              <div
-                style={{
-                  width: '64px',
-                  height: '64px',
-                  borderRadius: '50%',
-                  background: 'linear-gradient(135deg, var(--primary) 0%, #4f46e5 100%)',
-                  color: 'white',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontWeight: 700,
-                  fontSize: '24px',
-                  boxShadow: '0 2px 8px rgba(41, 84, 229, 0.25)'
-                }}
-              >
-                {user?.name ? user.name.charAt(0).toUpperCase() : 'P'}
-              </div>
-            )}
+            ) : null}
+            <div
+              style={{
+                display: user?.profilePicture ? 'none' : 'flex',
+                width: '64px',
+                height: '64px',
+                borderRadius: '50%',
+                background: 'linear-gradient(135deg, var(--primary) 0%, #4f46e5 100%)',
+                color: 'white',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontWeight: 700,
+                fontSize: '24px',
+                boxShadow: '0 2px 8px rgba(41, 84, 229, 0.25)'
+              }}
+            >
+              {user?.name ? user.name.charAt(0).toUpperCase() : 'P'}
+            </div>
             <span
               style={{
                 position: 'absolute',

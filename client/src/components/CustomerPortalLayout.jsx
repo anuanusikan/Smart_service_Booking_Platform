@@ -1,17 +1,48 @@
+import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { authApi } from '../services/api';
 
-function CustomerPortalLayout({ children, title, subtitle, extraAction }) {
+function CustomerPortalLayout({ children, title, subtitle, extraAction, centerContent = false }) {
   const location = useLocation();
   const currentPath = location.pathname;
 
-  const user = (() => {
+  const readUser = () => {
     try {
       const item = localStorage.getItem('user');
       return item ? JSON.parse(item) : null;
     } catch {
       return null;
     }
-  })();
+  };
+
+  const [user, setUser] = useState(readUser);
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      setUser(readUser());
+    };
+
+    window.addEventListener('userProfileUpdated', handleUpdate);
+    window.addEventListener('storage', handleUpdate);
+
+    // Sync with backend on mount if profile picture is missing
+    const token = localStorage.getItem('token');
+    if (token) {
+      authApi.getMe().then((me) => {
+        if (me && me.profilePicture && me.profilePicture !== user?.profilePicture) {
+          const stored = readUser() || {};
+          const synced = { ...stored, profilePicture: me.profilePicture };
+          localStorage.setItem('user', JSON.stringify(synced));
+          setUser(synced);
+        }
+      }).catch(() => {});
+    }
+
+    return () => {
+      window.removeEventListener('userProfileUpdated', handleUpdate);
+      window.removeEventListener('storage', handleUpdate);
+    };
+  }, []);
 
   const navItems = [
     { label: 'Dashboard', path: '/dashboard', icon: '📊' },
@@ -41,6 +72,9 @@ function CustomerPortalLayout({ children, title, subtitle, extraAction }) {
               <img
                 src={user.profilePicture}
                 alt={user?.name || 'Customer'}
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none';
+                }}
                 style={{
                   width: '64px',
                   height: '64px',
@@ -50,25 +84,24 @@ function CustomerPortalLayout({ children, title, subtitle, extraAction }) {
                   boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
                 }}
               />
-            ) : (
-              <div
-                style={{
-                  width: '64px',
-                  height: '64px',
-                  borderRadius: '50%',
-                  background: 'linear-gradient(135deg, var(--success) 0%, #059669 100%)',
-                  color: 'white',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontWeight: 700,
-                  fontSize: '24px',
-                  boxShadow: '0 2px 8px rgba(16, 185, 129, 0.25)'
-                }}
-              >
-                {user?.name ? user.name.charAt(0).toUpperCase() : 'C'}
-              </div>
-            )}
+            ) : null}
+            <div
+              style={{
+                display: user?.profilePicture ? 'none' : 'flex',
+                width: '64px',
+                height: '64px',
+                borderRadius: '50%',
+                background: 'linear-gradient(135deg, var(--success) 0%, #059669 100%)',
+                color: 'white',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontWeight: 700,
+                fontSize: '24px',
+                boxShadow: '0 2px 8px rgba(16, 185, 129, 0.25)'
+              }}
+            >
+              {user?.name ? user.name.charAt(0).toUpperCase() : 'C'}
+            </div>
             <span
               style={{
                 position: 'absolute',
@@ -135,13 +168,16 @@ function CustomerPortalLayout({ children, title, subtitle, extraAction }) {
         {(title || extraAction) && (
           <div style={{
             display: 'flex',
-            justifyContent: 'space-between',
+            justifyContent: centerContent ? 'center' : 'space-between',
             alignItems: 'center',
             marginBottom: '24px',
             flexWrap: 'wrap',
-            gap: '12px'
+            gap: '12px',
+            maxWidth: centerContent ? '750px' : 'none',
+            margin: centerContent ? '0 auto 24px auto' : '0 0 24px 0',
+            textAlign: centerContent ? 'center' : 'left'
           }}>
-            <div>
+            <div style={centerContent ? { width: '100%' } : {}}>
               {title && <h2 style={{ margin: 0 }}>{title}</h2>}
               {subtitle && <p className="meta" style={{ margin: '4px 0 0' }}>{subtitle}</p>}
             </div>
@@ -149,7 +185,13 @@ function CustomerPortalLayout({ children, title, subtitle, extraAction }) {
           </div>
         )}
 
-        {children}
+        {centerContent ? (
+          <div style={{ maxWidth: '750px', margin: '0 auto', width: '100%' }}>
+            {children}
+          </div>
+        ) : (
+          children
+        )}
       </main>
     </div>
   );

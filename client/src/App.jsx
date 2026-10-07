@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import Home from './pages/Home';
@@ -16,6 +16,7 @@ import ProviderDashboard from './pages/ProviderDashboard';
 import ProviderEarnings from './pages/ProviderEarnings';
 import ProviderSchedule from './pages/ProviderSchedule';
 import MessageThread from './pages/MessageThread';
+import { authApi } from './services/api';
 
 function App() {
   const [showProfile, setShowProfile] = useState(false);
@@ -32,9 +33,47 @@ function App() {
 
   const [user, setUser] = useState(getUser);
 
-  const refreshUser = () => {
-    setUser(getUser());
+  const refreshUser = (updated) => {
+    if (updated && updated.name) {
+      setUser(updated);
+    } else {
+      setUser(getUser());
+    }
   };
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      authApi.getMe().then((me) => {
+        if (me && (me._id || me.id)) {
+          const stored = getUser() || {};
+          const syncedUser = {
+            ...stored,
+            id: me._id || me.id,
+            name: me.name,
+            email: me.email,
+            role: me.role,
+            profilePicture: me.profilePicture || ''
+          };
+          localStorage.setItem('user', JSON.stringify(syncedUser));
+          setUser(syncedUser);
+          window.dispatchEvent(new Event('userProfileUpdated'));
+        }
+      }).catch(() => {});
+    }
+
+    const handleProfileUpdate = () => {
+      setUser(getUser());
+    };
+
+    window.addEventListener('userProfileUpdated', handleProfileUpdate);
+    window.addEventListener('storage', handleProfileUpdate);
+
+    return () => {
+      window.removeEventListener('userProfileUpdated', handleProfileUpdate);
+      window.removeEventListener('storage', handleProfileUpdate);
+    };
+  }, []);
 
   return (
     <>

@@ -503,6 +503,9 @@ function Navbar({ onProfileClick, user, onOpenChat }) {
                 <img
                   src={user.profilePicture}
                   alt={user.name}
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                  }}
                   style={{
                     width: '26px',
                     height: '26px',
@@ -510,11 +513,13 @@ function Navbar({ onProfileClick, user, onOpenChat }) {
                     objectFit: 'cover'
                   }}
                 />
-              ) : (
-                <div className="user-avatar-circle">
-                  {user.name ? user.name.charAt(0).toUpperCase() : 'U'}
-                </div>
-              )}
+              ) : null}
+              <div
+                className="user-avatar-circle"
+                style={{ display: user?.profilePicture ? 'none' : 'flex' }}
+              >
+                {user.name ? user.name.charAt(0).toUpperCase() : 'U'}
+              </div>
               <span>{user.name}</span>
               <span style={{ fontSize: '11px', color: 'var(--slate)', marginLeft: '2px' }}>⚙️</span>
             </div>

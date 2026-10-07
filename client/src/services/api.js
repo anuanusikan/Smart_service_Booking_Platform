@@ -31,23 +31,15 @@ export async function apiGet(path, auth = false) {
       headers: auth ? getAuthHeaders() : {}
     });
 
-    const data = await res.json();
+    if (!res.ok) {
+      console.warn(`apiGet non-ok status (${res.status}) on ${path}`);
+    }
 
-    return {
-      ok: res.ok,
-      status: res.status,
-      data
-    };
+    const data = await res.json();
+    return data;
   } catch (err) {
     console.error(`apiGet error on ${path}:`, err);
-
-    return {
-      ok: false,
-      status: 0,
-      data: {
-        message: 'Network error. Please try again.'
-      }
-    };
+    return null;
   }
 }
 

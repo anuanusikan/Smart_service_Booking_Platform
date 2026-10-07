@@ -78,8 +78,20 @@ function PostJob() {
     <CustomerPortalLayout
       title="Post a New Job"
       subtitle="Publish your service need and receive competitive quotes from skilled local providers."
+      centerContent
     >
-      <div className="card" style={{ maxWidth: '750px' }}>
+      <div
+        className="card"
+        style={{
+          maxWidth: '750px',
+          margin: '0 auto',
+          background: 'linear-gradient(135deg, #FFFFFF 0%, #FAFCFF 45%, #F0F5FF 100%)',
+          border: '1px solid #E2E8F0',
+          borderRadius: '14px',
+          padding: '28px',
+          boxShadow: '0 2px 10px rgba(17, 24, 39, 0.04)'
+        }}
+      >
         {message.text && (
           <div
             style={{

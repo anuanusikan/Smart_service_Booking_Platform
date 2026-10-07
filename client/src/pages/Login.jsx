@@ -27,6 +27,7 @@ function Login({ onLoginSuccess }) {
       if (ok) {
         localStorage.setItem('token', data.token);
         localStorage.setItem('user', JSON.stringify(data.user));
+        window.dispatchEvent(new Event('userProfileUpdated'));
         if (onLoginSuccess) onLoginSuccess();
         setMessage('Login successful!');
         const destination = data.user.role === 'provider' ? '/provider-dashboard' : '/dashboard';
