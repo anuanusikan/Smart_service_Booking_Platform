@@ -107,15 +107,14 @@ router.put('/:id/accept', authMiddleware, async (req, res) => {
       return res.status(400).json({ message: 'This quote is no longer pending' });
     }
 
-    quote.status = 'accepted';
-    await quote.save();
-
-    await Quote.updateMany(
-      { job: quote.job, _id: { $ne: quote._id }, status: 'pending' },
-      { status: 'declined' }
+    const job = await Job.findOneAndUpdate(
+      { _id: quote.job, status: 'open' },
+      { status: 'assigned' },
+      { new: true }
     );
-
-    const job = await Job.findByIdAndUpdate(quote.job, { status: 'assigned' }, { new: true });
+    if (!job) {
+      return res.status(409).json({ message: 'This job is no longer open' });
+    }
 
     const booking = new Booking({
       job: quote.job,
@@ -123,7 +122,22 @@ router.put('/:id/accept', authMiddleware, async (req, res) => {
       customer: quote.customer,
       status: 'accepted'
     });
-    await booking.save();
+    try {
+      await booking.save();
+    } catch (err) {
+      await Job.updateOne({ _id: quote.job, status: 'assigned' }, { status: 'open' });
+      throw err;
+    }
+    quote.status = 'accepted';
+    await quote.save();
+    await Quote.updateMany(
+      { job: quote.job, _id: { $ne: quote._id }, status: 'pending' },
+      { status: 'declined' }
+    );
+    await Booking.updateMany(
+      { job: quote.job, _id: { $ne: booking._id }, status: 'pending' },
+      { status: 'declined' }
+    );
 
     try {
       await Notification.create({
@@ -152,6 +166,10 @@ router.put('/:id/decline', authMiddleware, async (req, res) => {
 
     if (quote.customer.toString() !== req.user.id) {
       return res.status(403).json({ message: 'Not authorized to decline this quote' });
+    }
+
+    if (quote.status !== 'pending') {
+      return res.status(400).json({ message: 'Only pending quotes can be declined' });
     }
 
     quote.status = 'declined';

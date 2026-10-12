@@ -1,41 +1,80 @@
 import { useState, useEffect, useRef } from 'react';
 import { messagesApi } from '../services/api';
 
-async function MessageThread({ bookingId, otherPersonName, onClose }) {
+function MessageThread({ bookingId, otherPersonName, onClose }) {
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState('');
   const [loading, setLoading] = useState(true);
   
-  const user = JSON.parse(localStorage.getItem('user'));
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState('');
+  const sendInProgress = useRef(false);
+  const messageVersion = useRef(0);
+  const user = (() => {
+    try {
+      return JSON.parse(localStorage.getItem('user') || 'null');
+    } catch {
+      return null;
+    }
+  })();
   const bottomRef = useRef(null);
 
- const fetchMessages = async () => {
-  try {
-    const data = await messagesApi.getThread(bookingId);
-
-    setMessages(Array.isArray(data) ? data : []);
-    setLoading(false);
-  } catch {
-    setLoading(false);
-  }
-};
-
   useEffect(() => {
+    let active = true;
+    setMessages([]);
+    setLoading(true);
+    setError('');
+    const fetchMessages = async () => {
+      const version = messageVersion.current;
+      const data = await messagesApi.getThread(bookingId);
+      if (!active) return;
+      // Ignore stale polls that could overwrite a newly sent message.
+      if (!sendInProgress.current && version === messageVersion.current) {
+        if (Array.isArray(data)) {
+          setMessages(data);
+        } else {
+          setError('Could not load messages. Please reopen the chat to try again.');
+        }
+      }
+      setLoading(false);
+    };
     fetchMessages();
-    const interval = setInterval(fetchMessages, 4000); // poll every 4 seconds
-    return () => clearInterval(interval);
+    const interval = setInterval(fetchMessages, 4000);
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
   }, [bookingId]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
- const  { ok, data } = await messagesApi.send(bookingId, text);
+  const sendMessage = async (event) => {
+    event.preventDefault();
+    const messageText = text.trim();
+    if (!messageText || sendInProgress.current) return;
+    sendInProgress.current = true;
+    messageVersion.current += 1;
+    setSending(true);
+    setError('');
+    try {
+      const { ok, data } = await messagesApi.send(bookingId, messageText);
+      if (ok) {
+        setMessages(prev => prev.some(msg => msg._id === data._id) ? prev : [...prev, data]);
+        setText('');
+      } else {
+        setError(data?.message || 'Could not send message. Please try again.');
+      }
+    } catch {
+      setError('Could not send message. Please try again.');
+    } finally {
+      messageVersion.current += 1;
+      sendInProgress.current = false;
+      setSending(false);
+    }
+  };
 
-if (ok) {
-  setMessages(prev => [...prev, data]);
-  setText('');
-}
   return (
     <div
       onClick={onClose}
@@ -64,7 +103,7 @@ if (ok) {
           {!loading && messages.length === 0 && <p className="meta">No messages yet. Say hello!</p>}
 
           {messages.map((msg) => {
-            const isMine = msg.sender?._id === user.id;
+            const isMine = msg.sender?._id === (user?.id || user?._id);
             return (
               <div key={msg._id} style={{ display: 'flex', justifyContent: isMine ? 'flex-end' : 'flex-start', marginBottom: '10px' }}>
                 <div style={{
@@ -83,15 +122,17 @@ if (ok) {
           <div ref={bottomRef} />
         </div>
 
+        {error && <p role="alert" style={{ color: 'var(--danger)', margin: '0 12px 8px' }}>{error}</p>}
         <form onSubmit={sendMessage} style={{ display: 'flex', gap: '8px', padding: '12px', borderTop: '1px solid var(--border)' }}>
           <input
             type="text"
             placeholder="Type a message..."
             value={text}
+            disabled={sending}
             onChange={(e) => setText(e.target.value)}
             style={{ margin: 0 }}
           />
-          <button type="submit" style={{ flexShrink: 0 }}>Send</button>
+          <button type="submit" disabled={sending || !text.trim()} style={{ flexShrink: 0 }}>{sending ? 'Sending...' : 'Send'}</button>
         </form>
       </div>
     </div>

@@ -1,6 +1,7 @@
 const express = require('express');
 const Booking = require('../models/Booking');
 const Job = require('../models/Job');
+const Quote = require('../models/Quote');
 const Notification = require('../models/Notification');
 const authMiddleware = require('../middleware/auth');
 
@@ -93,20 +94,58 @@ router.put('/:id', authMiddleware, async (req, res) => {
       return res.status(403).json({ message: 'Not authorized to update this booking' });
     }
 
-    if (status === 'completed' && booking.status !== 'accepted') {
-      return res.status(400).json({ message: 'Only accepted bookings can be marked completed' });
+    const expectedStatus = {
+      accepted: 'pending',
+      declined: 'pending',
+      completed: 'accepted'
+    }[status];
+    if (!expectedStatus || booking.status !== expectedStatus) {
+      return res.status(400).json({ message: 'This booking cannot be changed to that status' });
     }
-
-    booking.status = status;
-    await booking.save();
+    if (!booking.job) {
+      return res.status(404).json({ message: 'Job no longer exists' });
+    }
 
     if (status === 'accepted') {
-      await Job.findByIdAndUpdate(booking.job, { status: 'assigned' });
+      // Claim the job atomically, shared with quote acceptance.
+      const claimed = await Job.findOneAndUpdate(
+        { _id: booking.job._id, status: 'open' },
+        { status: 'assigned' },
+        { new: true }
+      );
+      if (!claimed) {
+        return res.status(409).json({ message: 'This job is no longer open' });
+      }
+      try {
+        const updated = await Booking.findOneAndUpdate(
+          { _id: booking._id, status: 'pending' },
+          { status: 'accepted' },
+          { new: true }
+        );
+        if (!updated) throw new Error('This booking is no longer pending');
+      } catch (err) {
+        await Job.updateOne({ _id: booking.job._id, status: 'assigned' }, { status: 'open' });
+        throw err;
+      }
+      await Booking.updateMany(
+        { job: booking.job._id, _id: { $ne: booking._id }, status: 'pending' },
+        { status: 'declined' }
+      );
+      await Quote.updateMany({ job: booking.job._id, status: 'pending' }, { status: 'declined' });
+    } else {
+      const updated = await Booking.findOneAndUpdate(
+        { _id: booking._id, status: expectedStatus },
+        { status },
+        { new: true }
+      );
+      if (!updated) {
+        return res.status(409).json({ message: 'This booking has already changed. Please refresh.' });
+      }
+      if (status === 'completed') {
+        await Job.findByIdAndUpdate(booking.job._id, { status: 'completed' });
+      }
     }
-
-    if (status === 'completed') {
-      await Job.findByIdAndUpdate(booking.job, { status: 'completed' });
-    }
+    booking.status = status;
 
     try {
       const statusTitle = status.charAt(0).toUpperCase() + status.slice(1);
