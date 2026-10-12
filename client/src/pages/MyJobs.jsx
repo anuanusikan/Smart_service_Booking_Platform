@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import CustomerPortalLayout from '../components/CustomerPortalLayout';
 import ProviderPortalLayout from '../components/ProviderPortalLayout';
 import JobCard from '../components/JobCard';
 import { jobsApi, quotesApi } from '../services/api';
+import { validateJobForm } from '../utils/jobValidation';
 import { appointmentInput, appointmentISO } from '../utils/appointments';
 
 function MyJobs() {
@@ -11,10 +12,17 @@ function MyJobs() {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
   const [editingId, setEditingId] = useState(null);
+  const [editErrors, setEditErrors] = useState({});
+  const [editMessage, setEditMessage] = useState('');
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [pendingAction, setPendingAction] = useState('');
+  const actionInFlight = useRef(false);
   const [editForm, setEditForm] = useState({});
   const [openQuotesFor, setOpenQuotesFor] = useState(null);
   const [quotesByJob, setQuotesByJob] = useState({});
-  const [loadingQuotes, setLoadingQuotes] = useState(false);
+  const [loadingQuotes, setLoadingQuotes] = useState({});
+  const [quoteErrors, setQuoteErrors] = useState({});
+  const quoteRequests = useRef(new Set());
   const [filterTab, setFilterTab] = useState('all');
 
   const user = (() => {
@@ -41,6 +49,8 @@ function MyJobs() {
 
   const startEditing = (job) => {
     setEditingId(job._id);
+    setEditErrors({});
+    setEditMessage('');
     setEditForm({
       title: job.title,
       description: job.description,
@@ -59,39 +69,76 @@ function MyJobs() {
   const saveEdit = async (jobId) => {
     setMessage('');
 
-    if (editForm.title.trim().length < 3) {
-      setMessage('Title must be at least 3 characters.');
+    if (savingEdit) return;
+    const errors = validateJobForm(editForm);
+    setEditErrors(errors);
+    setEditMessage('');
+    if (Object.keys(errors).length) {
+      setEditMessage('Please check the highlighted fields.');
       return;
     }
-    if (editForm.description.trim().length < 10) {
-      setMessage('Description must be at least 10 characters.');
-      return;
-    }
-    if (editForm.budget && Number(editForm.budget) < 0) {
-      setMessage('Budget cannot be negative.');
-      return;
-    }
-
-    const { ok, data } = await jobsApi.update(jobId, { ...editForm, scheduledAt: appointmentISO(editForm.scheduledAt) });
-    if (ok) {
-      setMessage('Job updated successfully');
-      setEditingId(null);
-      fetchJobs();
-    } else {
-      setMessage(data?.message || 'Update failed');
+    setSavingEdit(true);
+    try {
+      const { ok, data } = await jobsApi.update(jobId, { ...editForm, scheduledAt: appointmentISO(editForm.scheduledAt) });
+      if (ok) {
+        setMessage('Job updated successfully');
+        setEditingId(null);
+        fetchJobs();
+      } else {
+        setEditErrors(data?.errors || {});
+        setEditMessage(data?.message || 'Update failed');
+      }
+    } catch {
+      setEditMessage('Could not save your changes. Please try again.');
+    } finally {
+      setSavingEdit(false);
     }
   };
 
-  const deleteJob = async (jobId) => {
+  const runAction = async (key, action) => {
+    if (actionInFlight.current) return;
+    actionInFlight.current = true;
+    setPendingAction(key);
+    try {
+      await action();
+    } catch {
+      setMessage('Could not confirm the result. Refresh your jobs before trying again.');
+    } finally {
+      actionInFlight.current = false;
+      setPendingAction('');
+    }
+  };
+
+  const deleteJob = (jobId) => runAction(`delete:${jobId}`, async () => {
     if (!window.confirm('Are you sure you want to delete this job listing?')) return;
 
     setMessage('');
     const { ok, data } = await jobsApi.delete(jobId);
     if (ok) {
       setMessage('Job deleted successfully');
-      fetchJobs();
+      await fetchJobs();
     } else {
       setMessage(data?.message || 'Delete failed');
+    }
+  });
+
+  const loadQuotes = async (jobId) => {
+    if (quoteRequests.current.has(jobId)) return;
+    quoteRequests.current.add(jobId);
+    setLoadingQuotes(current => ({ ...current, [jobId]: true }));
+    setQuoteErrors(current => ({ ...current, [jobId]: '' }));
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 12000);
+    try {
+      const data = await quotesApi.getByJob(jobId, { signal: controller.signal });
+      if (!Array.isArray(data)) throw new Error('Quotes unavailable');
+      setQuotesByJob(current => ({ ...current, [jobId]: data }));
+    } catch {
+      setQuoteErrors(current => ({ ...current, [jobId]: 'Could not load quotes. Please try again.' }));
+    } finally {
+      clearTimeout(timeout);
+      quoteRequests.current.delete(jobId);
+      setLoadingQuotes(current => ({ ...current, [jobId]: false }));
     }
   };
 
@@ -103,26 +150,23 @@ function MyJobs() {
     setOpenQuotesFor(jobId);
 
     if (!quotesByJob[jobId]) {
-      setLoadingQuotes(true);
-      const data = await quotesApi.getByJob(jobId);
-      setQuotesByJob({ ...quotesByJob, [jobId]: Array.isArray(data) ? data : [] });
-      setLoadingQuotes(false);
+      await loadQuotes(jobId);
     }
   };
 
-  const acceptQuote = async (quoteId) => {
+  const acceptQuote = (quoteId) => runAction(`accept:${quoteId}`, async () => {
     setMessage('');
     const { ok, data } = await quotesApi.accept(quoteId);
     if (ok) {
       setMessage('Quote accepted! A booking has been created — check Booking Requests.');
       setOpenQuotesFor(null);
-      fetchJobs();
+      await fetchJobs();
     } else {
       setMessage(data?.message || 'Failed to accept quote');
     }
-  };
+  });
 
-  const declineQuote = async (quoteId, jobId) => {
+  const declineQuote = (quoteId, jobId) => runAction(`decline:${quoteId}`, async () => {
     setMessage('');
     const { ok, data } = await quotesApi.decline(quoteId);
     if (ok) {
@@ -131,7 +175,7 @@ function MyJobs() {
     } else {
       setMessage(data?.message || 'Failed to decline quote');
     }
-  };
+  });
 
   const Layout = user?.role === 'provider' ? ProviderPortalLayout : CustomerPortalLayout;
 
@@ -152,12 +196,12 @@ function MyJobs() {
 
   return (
     <Layout
-      title="My Posted Jobs"
+      title={<span className="posted-jobs-heading">My Posted Jobs</span>}
       subtitle="Manage your active job posts, review provider bids, and select the best offer."
     >
-      <div className="centered-job-section">
+      <div className="centered-job-section posted-jobs-page">
         {/* COMPACT FILTER TAB BAR (CENTERED WITH SUITABLE SPACE) */}
-        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '24px' }}>
+        <div className="posted-jobs-filters">
           <div className="tab-nav-bar" style={{ marginBottom: 0 }}>
             <button
               className={`tab-btn${filterTab === 'all' ? ' active' : ''}`}
@@ -218,6 +262,10 @@ function MyJobs() {
               isEditing={editingId === job._id}
               editForm={editForm}
               setEditForm={setEditForm}
+              editErrors={editErrors}
+              editMessage={editMessage}
+              savingEdit={savingEdit}
+              pendingAction={pendingAction}
               onStartEdit={startEditing}
               onCancelEdit={cancelEditing}
               onSaveEdit={saveEdit}
@@ -225,7 +273,9 @@ function MyJobs() {
               isQuotesOpen={openQuotesFor === job._id}
               onToggleQuotes={toggleQuotes}
               quotes={quotesByJob[job._id] || []}
-              loadingQuotes={loadingQuotes && openQuotesFor === job._id}
+              loadingQuotes={Boolean(loadingQuotes[job._id])}
+              quotesError={quoteErrors[job._id]}
+              onRetryQuotes={() => loadQuotes(job._id)}
               onAcceptQuote={acceptQuote}
               onDeclineQuote={declineQuote}
             />

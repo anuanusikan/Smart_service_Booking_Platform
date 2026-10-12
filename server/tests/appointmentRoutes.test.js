@@ -42,3 +42,31 @@ test('assigned job appointment cannot be silently changed', async () => {
   expect(res.status).toHaveBeenCalledWith(400);
   expect(job.save).not.toHaveBeenCalled();
 });
+
+test.each([
+  { title: 'ab' }, { description: 'short' }, { category: '  ' },
+  { budget: -1 }, { budget: 'Infinity' }, { budget: 'abc' },
+  { title: [] }, { budget: true }
+])('posting and editing reject invalid job fields: %j', async invalid => {
+  const valid = { title: 'Fix kitchen tap', description: 'Repair the leaking kitchen tap', category: 'Plumbing', budget: 5000 };
+  const job = { ...valid, postedBy: 'c1', status: 'open', save: jest.fn() };
+  Job.findById.mockResolvedValue(job);
+  const createRes = response();
+  const editRes = response();
+  await create({ user: { id: 'c1', role: 'customer' }, body: { ...valid, ...invalid } }, createRes);
+  await edit({ user: { id: 'c1' }, params: { id: 'j1' }, body: invalid }, editRes);
+  expect(createRes.status).toHaveBeenCalledWith(400);
+  expect(editRes.status).toHaveBeenCalledWith(400);
+  expect(job.save).not.toHaveBeenCalled();
+  expect(job.title).toBe(valid.title);
+});
+test('editing normalizes text and allows zero and an empty optional budget', async () => {
+  const job = { postedBy: 'c1', status: 'open', save: jest.fn() };
+  Job.findById.mockResolvedValue(job);
+  await edit({ user: { id: 'c1' }, params: { id: 'j1' }, body: { title: '  New title  ', budget: '0' } }, response());
+  expect(job.title).toBe('New title');
+  expect(job.budget).toBe(0);
+  await edit({ user: { id: 'c1' }, params: { id: 'j1' }, body: { budget: '' } }, response());
+  expect(job.budget).toBe(0);
+  expect(job.save).toHaveBeenCalledTimes(2);
+});

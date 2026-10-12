@@ -12,6 +12,14 @@ const Quote = require('../models/Quote');
 const Job = require('../models/Job');
 const router = require('../routes/quotes');
 const handler = router.stack.find(layer => layer.route?.path === '/:id/accept').route.stack.at(-1).handle;
+const submitHandler = router.stack.find(layer => layer.route?.path === '/' && layer.route.methods.post).route.stack.at(-1).handle;
+
+test.each(['abc', 'Infinity', Infinity, NaN, '', '   ', 0, -1, true, [], {}, null, undefined])('rejects invalid quote price %p before database writes', async price => {
+  const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+  await submitHandler({ user: { id: 'p1', role: 'provider' }, body: { jobId: 'j1', price } }, res);
+  expect(res.status).toHaveBeenCalledWith(400);
+  expect(res.json).toHaveBeenCalledWith({ message: 'Please enter a valid price greater than Rs. 0' });
+});
 test('accepting a quote saves its price rather than the advertised budget', async () => {
   Quote.findById.mockResolvedValue({ _id: 'q1', job: 'j1', provider: 'p1', customer: 'c1', price: 7000, status: 'pending', save: jest.fn() });
   Job.findOneAndUpdate.mockResolvedValue({ _id: 'j1', title: 'Test', budget: 5000 });

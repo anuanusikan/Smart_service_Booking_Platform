@@ -224,8 +224,8 @@ export const jobsApi = {
 // -------------------------------------------------------------
 
 export const quotesApi = {
-  getByJob: (jobId) =>
-    apiGet(`/quotes/job/${jobId}`, true),
+  getByJob: (jobId, options = {}) =>
+    apiGet(`/quotes/job/${jobId}`, true, options),
 
   getMine: () =>
     apiGet('/quotes/mine', true),

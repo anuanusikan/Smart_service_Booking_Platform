@@ -4,6 +4,7 @@ const { storage } = require('../config/cloudinary');
 const upload = multer({ storage });
 const express = require('express');
 const Job = require('../models/Job');
+const { validateJobInput } = require('../services/jobValidation');
 const { parseAppointment } = require('../services/appointments');
 const authMiddleware = require('../middleware/auth');
 
@@ -16,21 +17,10 @@ router.post('/', authMiddleware, upload.array('images', 3), async (req, res) => 
       return res.status(403).json({ message: 'Only customers can post jobs' });
     }
 
-    const { title, description, category, location, budget } = req.body;
+    const validated = validateJobInput(req.body);
+    if (validated.message) return res.status(400).json({ message: validated.message, errors: validated.errors });
+    const { title, description, category, location, budget } = validated.value;
 
-        if (!title || title.trim().length < 3) {
-      return res.status(400).json({ message: 'Title must be at least 3 characters' });
-    }
-    if (!description || description.trim().length < 10) {
-      return res.status(400).json({ message: 'Description must be at least 10 characters' });
-    }
-    if (!category || category.trim().length === 0) {
-      return res.status(400).json({ message: 'Category is required' });
-    }
-    if (budget && (isNaN(budget) || Number(budget) < 0)) {
-      return res.status(400).json({ message: 'Budget must be a positive number' });
-    }
-    
     const appointment = parseAppointment(req.body.scheduledAt);
     if (appointment.error) return res.status(400).json({ message: appointment.error });
 
@@ -150,17 +140,14 @@ router.put('/:id', authMiddleware, async (req, res) => {
       return res.status(400).json({ message: 'Only open jobs can be edited' });
     }
 
-    const { title, description, category, location, budget } = req.body;
+    const validated = validateJobInput(req.body, true);
+    if (validated.message) return res.status(400).json({ message: validated.message, errors: validated.errors });
 
     const appointment = parseAppointment(req.body.scheduledAt, job.scheduledAt);
     if (appointment.error) return res.status(400).json({ message: appointment.error });
     job.scheduledAt = appointment.value;
 
-    job.title = title ?? job.title;
-    job.description = description ?? job.description;
-    job.category = category ?? job.category;
-    job.location = location ?? job.location;
-    job.budget = budget ?? job.budget;
+    Object.assign(job, validated.value);
 
     await job.save();
 

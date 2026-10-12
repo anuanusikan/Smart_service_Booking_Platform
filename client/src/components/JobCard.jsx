@@ -1,3 +1,4 @@
+import JobDetailsFields from './JobDetailsFields';
 import { appointmentLabel } from '../utils/appointments';
 
 function JobCard({
@@ -8,6 +9,10 @@ function JobCard({
   // Manage variant props (MyJobs)
   isEditing = false,
   editForm = {},
+  editErrors = {},
+  editMessage = '',
+  savingEdit = false,
+  pendingAction = '',
   setEditForm,
   onStartEdit,
   onCancelEdit,
@@ -17,6 +22,8 @@ function JobCard({
   onToggleQuotes,
   quotes = [],
   loadingQuotes = false,
+  quotesError = '',
+  onRetryQuotes,
   onAcceptQuote,
   onDeclineQuote,
 
@@ -61,53 +68,10 @@ function JobCard({
 
       {/* INLINE EDIT MODE (FOR MANAGE VARIANT) */}
       {isEditing ? (
-        <div className="job-card-drawer" style={{ marginTop: '8px' }}>
-          <p style={{ margin: '0 0 12px', fontSize: '13px', fontWeight: 700, color: 'var(--navy)' }}>
-            ✏️ Edit Job Details
-          </p>
-          <label style={{ fontSize: '12px', fontWeight: 600 }}>Job Title</label>
-          <input
-            type="text"
-            value={editForm.title || ''}
-            onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
-            placeholder="Job Title"
-          />
-
-          <label style={{ fontSize: '12px', fontWeight: 600 }}>Description</label>
-          <textarea
-            rows={3}
-            value={editForm.description || ''}
-            onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
-            placeholder="Detailed description of the task"
-          />
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-            <div>
-              <label style={{ fontSize: '12px', fontWeight: 600 }}>Category</label>
-              <input
-                type="text"
-                value={editForm.category || ''}
-                onChange={(e) => setEditForm({ ...editForm, category: e.target.value })}
-              />
-            </div>
-            <div>
-              <label style={{ fontSize: '12px', fontWeight: 600 }}>Location</label>
-              <input
-                type="text"
-                value={editForm.location || ''}
-                onChange={(e) => setEditForm({ ...editForm, location: e.target.value })}
-              />
-            </div>
-          </div>
-
-          <label style={{ fontSize: '12px', fontWeight: 600 }}>Budget (Rs.)</label>
-          <input
-            type="number"
-            min="0"
-            value={editForm.budget || ''}
-            onChange={(e) => setEditForm({ ...editForm, budget: e.target.value })}
-          />
-
+        <form className="job-card-drawer job-edit-form job-details-form" noValidate onSubmit={event => { event.preventDefault(); onSaveEdit(job._id); }}>
+          <div className="job-edit-heading"><span className="job-form-kicker">Refine your listing</span><h3>Edit job details</h3><p>Keep your request clear, so providers can offer the right help.</p></div>
+          {editMessage && <p className="job-edit-error" role="alert">{editMessage}</p>}
+          <JobDetailsFields values={editForm} errors={editErrors} onChange={(name, value) => setEditForm({ ...editForm, [name]: value })} />
           <div className="appointment-field">
             <label htmlFor={`appointment-${job._id}`}>Appointment date &amp; time <span>(optional)</span></label>
             <input id={`appointment-${job._id}`} type="datetime-local" value={editForm.scheduledAt || ''}
@@ -115,14 +79,14 @@ function JobCard({
             <p>Sri Lanka time (UTC +05:30). Clear the field to arrange a time later.</p>
           </div>
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '6px' }}>
-            <button type="button" onClick={onCancelEdit} className="btn-outline btn-sm">
+            <button type="button" disabled={savingEdit} onClick={onCancelEdit} className="btn-outline btn-sm">
               Cancel
             </button>
-            <button type="button" onClick={() => onSaveEdit(job._id)} className="btn-success btn-sm">
-              Save Changes
+            <button type="submit" disabled={savingEdit} className="job-form-submit btn-sm">
+              {savingEdit ? 'Saving...' : 'Save changes'}
             </button>
           </div>
-        </div>
+        </form>
       ) : (
         <>
           {/* TITLE & DESCRIPTION */}
@@ -159,6 +123,7 @@ function JobCard({
                       <button
                         type="button"
                         onClick={() => onStartEdit(job)}
+                        disabled={Boolean(pendingAction)}
                         className="btn-outline btn-sm"
                       >
                         ✏️ Edit
@@ -166,9 +131,10 @@ function JobCard({
                       <button
                         type="button"
                         onClick={() => onDelete(job._id)}
+                        disabled={Boolean(pendingAction)}
                         className="btn-danger-outline btn-sm"
                       >
-                        🗑️ Delete
+                        {pendingAction === `delete:${job._id}` ? 'Deleting...' : 'Delete'}
                       </button>
                     </>
                   )}
@@ -226,8 +192,9 @@ function JobCard({
               </div>
 
               {loadingQuotes && <p className="meta">Loading quotes...</p>}
+              {!loadingQuotes && quotesError && <div role="alert"><p className="meta">{quotesError}</p><button type="button" className="btn-outline btn-sm" onClick={onRetryQuotes}>Try again</button></div>}
 
-              {!loadingQuotes && quotes.length === 0 && (
+              {!loadingQuotes && !quotesError && quotes.length === 0 && (
                 <p className="meta" style={{ padding: '8px 0', margin: 0 }}>
                   No quotes received from providers yet.
                 </p>
@@ -260,17 +227,19 @@ function JobCard({
                       <button
                         type="button"
                         onClick={() => onDeclineQuote(quote._id, job._id)}
+                        disabled={Boolean(pendingAction)}
                         className="btn-outline btn-sm"
                         style={{ color: 'var(--danger)' }}
                       >
-                        Decline
+                        {pendingAction === `decline:${quote._id}` ? 'Declining...' : 'Decline'}
                       </button>
                       <button
                         type="button"
                         onClick={() => onAcceptQuote(quote._id, job._id)}
+                        disabled={Boolean(pendingAction)}
                         className="btn-success btn-sm"
                       >
-                        ✓ Accept &amp; Hire
+                        {pendingAction === `accept:${quote._id}` ? 'Accepting...' : 'Accept & Hire'}
                       </button>
                     </div>
                   ) : (

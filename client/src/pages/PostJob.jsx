@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import CustomerPortalLayout from '../components/CustomerPortalLayout';
 import { apiUpload } from '../services/api';
 import { appointmentISO } from '../utils/appointments';
+import JobDetailsFields from '../components/JobDetailsFields';
+import { validateJobForm } from '../utils/jobValidation';
 
 function PostJob() {
   const navigate = useNavigate();
@@ -14,13 +16,10 @@ function PostJob() {
     budget: '',
     scheduledAt: ''
   });
+  const [errors, setErrors] = useState({});
   const [images, setImages] = useState([]);
   const [message, setMessage] = useState({ type: '', text: '' });
   const [uploading, setUploading] = useState(false);
-
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
 
   const handleImageChange = (e) => {
     const selectedFiles = Array.from(e.target.files).slice(0, 3);
@@ -31,16 +30,10 @@ function PostJob() {
     e.preventDefault();
     setMessage({ type: '', text: '' });
 
-    if (formData.title.trim().length < 3) {
-      setMessage({ type: 'error', text: 'Title must be at least 3 characters.' });
-      return;
-    }
-    if (formData.description.trim().length < 10) {
-      setMessage({ type: 'error', text: 'Description must be at least 10 characters.' });
-      return;
-    }
-    if (formData.budget && Number(formData.budget) < 0) {
-      setMessage({ type: 'error', text: 'Budget cannot be negative.' });
+    const fieldErrors = validateJobForm(formData);
+    setErrors(fieldErrors);
+    if (Object.keys(fieldErrors).length) {
+      setMessage({ type: 'error', text: 'Please check the highlighted fields below.' });
       return;
     }
 
@@ -88,20 +81,11 @@ function PostJob() {
       subtitle="Publish your service need and receive competitive quotes from skilled local providers."
       centerContent
     >
-      <div
-        className="card"
-        style={{
-          maxWidth: '750px',
-          margin: '0 auto',
-          background: 'linear-gradient(135deg, #FFFFFF 0%, #FAFCFF 45%, #F0F5FF 100%)',
-          border: '1px solid #E2E8F0',
-          borderRadius: '14px',
-          padding: '28px',
-          boxShadow: '0 2px 10px rgba(17, 24, 39, 0.04)'
-        }}
-      >
+      <div className="job-form-shell">
+        <div className="job-form-banner"><span className="job-form-kicker">A great project starts here</span><h2>Let's bring your project to life.</h2><p>Share a few details. Let local professionals take care of the rest.</p></div>
+        <div className="job-form-content">
         {message.text && (
-          <div
+          <div role="alert"
             style={{
               padding: '12px 16px',
               borderRadius: '8px',
@@ -116,73 +100,24 @@ function PostJob() {
           </div>
         )}
 
-        <form onSubmit={handleSubmit}>
-          <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--navy)' }}>Job Title</label>
-          <input
-            type="text"
-            name="title"
-            placeholder="e.g. Need plumber to fix bathroom sink leakage"
-            value={formData.title}
-            onChange={handleChange}
-            required
-          />
-
-          <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--navy)' }}>Detailed Description</label>
-          <textarea
-            name="description"
-            placeholder="Describe the problem, requirements, and timing in detail..."
-            value={formData.description}
-            onChange={handleChange}
-            required
-            rows={4}
-          />
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-            <div>
-              <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--navy)' }}>Service Category</label>
-              <input
-                type="text"
-                name="category"
-                placeholder="e.g. Plumbing, Electrical, Cleaning"
-                value={formData.category}
-                onChange={handleChange}
-                required
-              />
-            </div>
-
-            <div>
-              <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--navy)' }}>Location / Area</label>
-              <input
-                type="text"
-                name="location"
-                placeholder="e.g. Colombo 03"
-                value={formData.location}
-                onChange={handleChange}
-              />
-            </div>
-          </div>
-
-          <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--navy)' }}>Estimated Budget (Rs.)</label>
-          <input
-            type="number"
-            name="budget"
-            min="0"
-            placeholder="e.g. 5000"
-            value={formData.budget}
-            onChange={handleChange}
-          />
-
+        <form onSubmit={handleSubmit} noValidate className="job-details-form">
+          <div className="job-form-section-title"><span>01</span><div><h3>The essentials</h3><p>Tell providers what you need.</p></div></div>
+          <JobDetailsFields values={formData} errors={errors} onChange={(name, value) => {
+            setFormData(current => ({ ...current, [name]: value }));
+            setErrors(current => ({ ...current, [name]: undefined }));
+          }} />
           <div className="appointment-field">
             <span className="appointment-kicker">Plan your visit</span>
             <label htmlFor="job-appointment">Appointment date &amp; time <span>(optional)</span></label>
-            <input id="job-appointment" type="datetime-local" name="scheduledAt" value={formData.scheduledAt} onChange={handleChange} aria-describedby="appointment-hint" />
+            <input id="job-appointment" type="datetime-local" name="scheduledAt" value={formData.scheduledAt} onChange={e => setFormData({ ...formData, scheduledAt: e.target.value })} aria-describedby="appointment-hint" />
             <p id="appointment-hint">Sri Lanka time (UTC +05:30). Leave blank if you want to arrange a time with the provider.</p>
           </div>
 
-          <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: 600, color: 'var(--navy)' }}>
+          <label htmlFor="job-photos" style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: 600, color: 'var(--navy)' }}>
             Attach Photos (optional, up to 3)
           </label>
           <input
+            id="job-photos"
             type="file"
             accept="image/*"
             multiple
@@ -190,10 +125,12 @@ function PostJob() {
             style={{ fontSize: '13px' }}
           />
 
-          <button type="submit" disabled={uploading} className="btn-success" style={{ width: '100%', marginTop: '10px' }}>
+          <button type="submit" disabled={uploading} className="job-form-submit" style={{ width: '100%', marginTop: '10px' }}>
             {uploading ? 'Publishing job...' : 'Publish Job Listing →'}
           </button>
+          <p className="job-form-privacy">Your job will be visible to providers. Share only the details needed for a quote.</p>
         </form>
+        </div>
       </div>
     </CustomerPortalLayout>
   );

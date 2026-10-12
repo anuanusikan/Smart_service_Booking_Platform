@@ -17,8 +17,9 @@ router.post('/', authMiddleware, async (req, res) => {
 
     const { jobId, price, message } = req.body;
 
-    if (!price || Number(price) <= 0) {
-      return res.status(400).json({ message: 'Please enter a valid price' });
+    const numericPrice = Number(price);
+    if (!['number', 'string'].includes(typeof price) || !Number.isFinite(numericPrice) || numericPrice <= 0) {
+      return res.status(400).json({ message: 'Please enter a valid price greater than Rs. 0' });
     }
 
     const job = await Job.findById(jobId);
@@ -38,7 +39,7 @@ router.post('/', authMiddleware, async (req, res) => {
       job: jobId,
       provider: req.user.id,
       customer: job.postedBy,
-      price,
+      price: numericPrice,
       message
     });
 
