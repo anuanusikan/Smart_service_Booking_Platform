@@ -1,7 +1,7 @@
 const express = require('express');
 const Booking = require('../models/Booking');
 const Job = require('../models/Job');
-const Quote = require('../models/Quote');
+const { declinePendingQuotes } = require('../services/quoteNotifications');
 const Notification = require('../models/Notification');
 const authMiddleware = require('../middleware/auth');
 
@@ -131,7 +131,7 @@ router.put('/:id', authMiddleware, async (req, res) => {
         { job: booking.job._id, _id: { $ne: booking._id }, status: 'pending' },
         { status: 'declined' }
       );
-      await Quote.updateMany({ job: booking.job._id, status: 'pending' }, { status: 'declined' });
+      await declinePendingQuotes({ job: booking.job._id }, req.user.id, booking.job.title);
     } else {
       const updated = await Booking.findOneAndUpdate(
         { _id: booking._id, status: expectedStatus },

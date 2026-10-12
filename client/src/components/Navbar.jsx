@@ -1,9 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { messagesApi,notificationsApi} from '../services/api';
 
 function Navbar({ onProfileClick, user, onOpenChat }) {
   const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const isPublicPage = ['/', '/login', '/register'].includes(pathname);
+  const dashboardPath = user?.role === 'provider' ? '/provider-dashboard' : '/dashboard';
 
   const [openMenu, setOpenMenu] = useState(null); // null | 'messages' | 'notifications'
   const [notifTab, setNotifTab] = useState('alerts'); // 'alerts' | 'settings'
@@ -161,12 +164,12 @@ function Navbar({ onProfileClick, user, onOpenChat }) {
   };
 
   return (
-    <div className="navbar" ref={menuRef}>
+    <div className={`navbar${isPublicPage || !user ? ' navbar-public' : ''}`} ref={menuRef}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-        <Link to={user?.role === 'provider' ? '/provider-dashboard' : (user ? '/dashboard' : '/')} className="logo">
+        <Link to={isPublicPage || !user ? '/' : dashboardPath} className="logo">
           <span style={{ fontSize: '22px' }}>⚡</span> ServiceSync
         </Link>
-        {user?.role === 'provider' && (
+        {!isPublicPage && user?.role === 'provider' && (
           <span
             style={{
               fontSize: '11px',
@@ -183,7 +186,7 @@ function Navbar({ onProfileClick, user, onOpenChat }) {
             Provider Portal
           </span>
         )}
-        {user?.role === 'customer' && (
+        {!isPublicPage && user?.role === 'customer' && (
           <span
             style={{
               fontSize: '11px',
@@ -204,7 +207,7 @@ function Navbar({ onProfileClick, user, onOpenChat }) {
 
       <div className="links">
         {/* Navigation links for logged in vs guest */}
-        {user ? (
+        {user && !isPublicPage ? (
           <>
 
             {/* MESSAGES DROPDOWN */}
@@ -528,8 +531,14 @@ function Navbar({ onProfileClick, user, onOpenChat }) {
           /* GUEST NAVIGATION */
           <>
             <Link to="/jobs">Browse Jobs</Link>
-            <Link to="/register" className="btn-link">Register</Link>
-            <Link to="/login" style={{ fontWeight: 600, color: 'var(--navy)' }}>Login</Link>
+            {user ? (
+              <Link to={dashboardPath} className="btn-link">Dashboard</Link>
+            ) : (
+              <>
+                <Link to="/register">Register</Link>
+                <Link to="/login" className="public-login">Login</Link>
+              </>
+            )}
           </>
         )}
       </div>

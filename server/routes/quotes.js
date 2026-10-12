@@ -4,6 +4,7 @@ const Job = require('../models/Job');
 const Booking = require('../models/Booking');
 const Notification = require('../models/Notification');
 const authMiddleware = require('../middleware/auth');
+const { declinePendingQuotes, notifyQuoteDeclined } = require('../services/quoteNotifications');
 
 const router = express.Router();
 
@@ -130,9 +131,8 @@ router.put('/:id/accept', authMiddleware, async (req, res) => {
     }
     quote.status = 'accepted';
     await quote.save();
-    await Quote.updateMany(
-      { job: quote.job, _id: { $ne: quote._id }, status: 'pending' },
-      { status: 'declined' }
+    await declinePendingQuotes(
+      { job: quote.job, _id: { $ne: quote._id } }, req.user.id, job.title
     );
     await Booking.updateMany(
       { job: quote.job, _id: { $ne: booking._id }, status: 'pending' },
@@ -172,8 +172,16 @@ router.put('/:id/decline', authMiddleware, async (req, res) => {
       return res.status(400).json({ message: 'Only pending quotes can be declined' });
     }
 
-    quote.status = 'declined';
-    await quote.save();
+    const declined = await Quote.findOneAndUpdate(
+      { _id: quote._id, status: 'pending' },
+      { status: 'declined' },
+      { new: true }
+    );
+    if (!declined) {
+      return res.status(409).json({ message: 'This quote has already changed. Please refresh.' });
+    }
+    const job = await Job.findById(quote.job);
+    await notifyQuoteDeclined(declined, req.user.id, job?.title);
     res.json({ message: 'Quote declined' });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });

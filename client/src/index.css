@@ -927,3 +927,49 @@ button:hover { background: var(--primary-dark); }
   color: var(--danger) !important;
   border-color: #FCA5A5 !important;
 }
+/* Public navigation: spacious links with a clear sign-in action. */
+.navbar-public {
+  padding: 18px clamp(20px, 5vw, 72px);
+  gap: 24px;
+  flex-wrap: wrap;
+}
+.navbar-public .links {
+  gap: 32px;
+  flex-wrap: wrap;
+}
+.navbar-public .links a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  white-space: nowrap;
+  color: var(--navy);
+}
+.navbar-public .links .public-login {
+  padding: 0 24px;
+  border: 1px solid var(--primary);
+  border-radius: 8px;
+  color: var(--primary);
+  font-weight: 600;
+}
+.navbar-public .links .public-login:hover {
+  background: var(--info-bg);
+}
+.navbar-public a:focus-visible {
+  outline: 3px solid var(--primary);
+  outline-offset: 4px;
+}
+@media (max-width: 600px) {
+  .navbar-public {
+    padding: 14px 20px;
+    gap: 12px;
+  }
+  .navbar-public .links {
+    width: 100%;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .navbar-public .links .public-login {
+    padding: 0 18px;
+  }
+}

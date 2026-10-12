@@ -83,7 +83,7 @@ function BrowseJobs() {
       });
 
       if (ok) {
-        setMessage('Quote submitted successfully! Track it in My Requests.');
+        setMessage('Quote submitted successfully! Track it in My Quotes.');
         setQuotedJobs({ ...quotedJobs, [jobId]: true });
         setOpenQuoteForm(null);
       } else {

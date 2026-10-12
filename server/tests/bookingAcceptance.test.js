@@ -1,6 +1,6 @@
-﻿jest.mock('../models/Booking', () => ({ findById: jest.fn(), findOneAndUpdate: jest.fn(), updateMany: jest.fn() }));
+jest.mock('../models/Booking', () => ({ findById: jest.fn(), findOneAndUpdate: jest.fn(), updateMany: jest.fn() }));
 jest.mock('../models/Job', () => ({ findOneAndUpdate: jest.fn(), findByIdAndUpdate: jest.fn(), updateOne: jest.fn() }));
-jest.mock('../models/Quote', () => ({ findById: jest.fn(), updateMany: jest.fn() }));
+jest.mock('../models/Quote', () => ({ findById: jest.fn(), find: jest.fn(), findOneAndUpdate: jest.fn(), updateMany: jest.fn() }));
 jest.mock('../models/Notification', () => ({ create: jest.fn() }));
 const Booking = require('../models/Booking');
 const Job = require('../models/Job');
@@ -17,7 +17,10 @@ function response() {
 function booking(status = 'pending') {
   return { _id: 'booking1', customer: 'customer1', provider: 'provider1', job: { _id: 'job1', title: 'Test job' }, status };
 }
-beforeEach(() => jest.resetAllMocks());
+beforeEach(() => {
+  jest.resetAllMocks();
+  Quote.find.mockResolvedValue([]);
+});
 test.each(['declined', 'completed', 'accepted'])('cannot accept a %s booking', async status => {
   Booking.findById.mockReturnValue({ populate: async () => booking(status) });
   const res = response();
@@ -40,7 +43,7 @@ test('competing acceptance requests can produce only one winner', async () => {
   await Promise.all([bookingHandler(req, first), bookingHandler(req, second)]);
   expect(Booking.findOneAndUpdate).toHaveBeenCalledTimes(1);
   expect([first, second].filter(res => res.status.mock.calls.some(([code]) => code === 409))).toHaveLength(1);
-  expect(Quote.updateMany).toHaveBeenCalledWith({ job: 'job1', status: 'pending' }, { status: 'declined' });
+  expect(Quote.find).toHaveBeenCalledWith({ job: 'job1', status: 'pending' });
   expect(Booking.updateMany).toHaveBeenCalled();
 });
 test('failed booking acceptance releases the job claim', async () => {
