@@ -1,4 +1,4 @@
-jest.mock('../models/Booking', () => ({ findById: jest.fn(), findOneAndUpdate: jest.fn(), updateMany: jest.fn() }));
+jest.mock('../models/Booking', () => ({ find: jest.fn(), findById: jest.fn(), findOneAndUpdate: jest.fn(), updateMany: jest.fn() }));
 jest.mock('../models/Job', () => ({ findOneAndUpdate: jest.fn(), findByIdAndUpdate: jest.fn(), updateOne: jest.fn() }));
 jest.mock('../models/Quote', () => ({ findById: jest.fn(), find: jest.fn(), findOneAndUpdate: jest.fn(), updateMany: jest.fn() }));
 jest.mock('../models/Notification', () => ({ create: jest.fn() }));
@@ -62,4 +62,16 @@ test('quote cannot assign a job already claimed through bookings', async () => {
   await quoteHandler({ params: { id: 'quote1' }, user: { id: 'customer1' } }, res);
   expect(Job.findOneAndUpdate).toHaveBeenCalledWith({ _id: 'job1', status: 'open' }, { status: 'assigned' }, { new: true });
   expect(res.status).toHaveBeenCalledWith(409);
+});
+
+test('earnings view fetches only completed bookings with lightweight job details', async () => {
+  const query = { select: jest.fn().mockReturnThis(), populate: jest.fn().mockReturnThis(), lean: jest.fn().mockResolvedValue([{ status: 'completed', agreedPrice: 7000 }]) };
+  Booking.find.mockReturnValue(query);
+  const handler = bookingRouter.stack.find(layer => layer.route?.path === '/mine').route.stack.at(-1).handle;
+  const res = response();
+  await handler({ query: { view: 'earnings' }, user: { id: 'provider1', role: 'provider' } }, res);
+  expect(Booking.find).toHaveBeenCalledWith({ provider: 'provider1', status: 'completed' });
+  expect(query.populate).toHaveBeenCalledWith('job', 'title budget');
+  expect(Quote.find).not.toHaveBeenCalled();
+  expect(res.json).toHaveBeenCalledWith([{ status: 'completed', agreedPrice: 7000 }]);
 });

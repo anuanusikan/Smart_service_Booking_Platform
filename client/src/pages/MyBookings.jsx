@@ -26,7 +26,7 @@ function MyBookings() {
 
   const fetchBookings = () => {
     Promise.all([
-      bookingsApi.getMine(),
+      bookingsApi.getHistory(),
       user?.role === 'customer' ? reviewsApi.getMine() : Promise.resolve([])
     ])
       .then(([bookingsData, reviewedIds]) => {
@@ -73,7 +73,7 @@ function MyBookings() {
     setMessage('');
     const { ok, data } = await bookingsApi.removeFromHistory(bookingId);
     if (ok) {
-      setMessage('Booking removed from history');
+      setMessage('Booking hidden from your history. The other person still has their copy.');
       fetchBookings();
     } else {
       setMessage(data?.message || 'Failed to remove booking');
@@ -126,12 +126,10 @@ function MyBookings() {
     return <p style={{ padding: '32px' }}>Loading bookings...</p>;
   }
 
-  const activeBookings = bookings.filter(b =>
-    !((b.status === 'completed' && reviewedBookings[b._id]) || b.status === 'declined')
-  );
-  const historyBookings = bookings.filter(b =>
-    (b.status === 'completed' && reviewedBookings[b._id]) || b.status === 'declined'
-  );
+  const belongsInHistory = b => b.status === 'declined' ||
+    (b.status === 'completed' && (user?.role === 'provider' || reviewedBookings[b._id]));
+  const activeBookings = bookings.filter(b => !belongsInHistory(b));
+  const historyBookings = bookings.filter(belongsInHistory);
 
   const bookingsBody = (
     <div className="centered-job-section">
@@ -201,10 +199,10 @@ function MyBookings() {
                 </span>
               </div>
 
-              {booking.job?.budget !== undefined && booking.job?.budget !== null && (
+              {(booking.agreedPrice ?? booking.job?.budget) != null && (
                 <div className="job-card-budget">
-                  <span className="budget-label">Budget</span>
-                  <span className="budget-val">Rs. {Number(booking.job.budget).toLocaleString()}</span>
+                  <span className="budget-label">{booking.status === 'accepted' || booking.status === 'completed' ? 'Agreed price' : 'Budget'}</span>
+                  <span className="budget-val">Rs. {Number(booking.agreedPrice ?? booking.job?.budget ?? 0).toLocaleString()}</span>
                 </div>
               )}
             </div>
@@ -439,10 +437,10 @@ function MyBookings() {
                 </span>
               </div>
 
-              {booking.job?.budget !== undefined && booking.job?.budget !== null && (
+              {(booking.agreedPrice ?? booking.job?.budget) != null && (
                 <div className="job-card-budget">
-                  <span className="budget-label">Budget</span>
-                  <span className="budget-val">Rs. {Number(booking.job.budget).toLocaleString()}</span>
+                  <span className="budget-label">{booking.status === 'accepted' || booking.status === 'completed' ? 'Agreed price' : 'Budget'}</span>
+                  <span className="budget-val">Rs. {Number(booking.agreedPrice ?? booking.job?.budget ?? 0).toLocaleString()}</span>
                 </div>
               )}
             </div>

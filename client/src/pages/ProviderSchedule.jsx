@@ -46,7 +46,7 @@ function ProviderSchedule() {
           <div key={b._id} className="card" style={{ borderLeft: '4px solid var(--primary)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span className="status-badge status-accepted">Active Job</span>
-              <span style={{ fontSize: '14px', fontWeight: 700, color: 'var(--success)' }}>Rs. {b.job?.budget?.toLocaleString()}</span>
+              <span style={{ fontSize: '14px', fontWeight: 700, color: 'var(--success)' }}>Rs. {(b.agreedPrice ?? b.job?.budget ?? 0).toLocaleString()}</span>
             </div>
             <h3 style={{ marginTop: '12px', fontSize: '16px' }}>{b.job?.title}</h3>
             <p className="meta"><b>Customer:</b> {b.customer?.name}</p>

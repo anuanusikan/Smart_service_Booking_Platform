@@ -121,7 +121,8 @@ router.put('/:id/accept', authMiddleware, async (req, res) => {
       job: quote.job,
       provider: quote.provider,
       customer: quote.customer,
-      status: 'accepted'
+      status: 'accepted',
+      agreedPrice: quote.price
     });
     try {
       await booking.save();

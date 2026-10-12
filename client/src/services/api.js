@@ -24,11 +24,12 @@ export function getAuthHeadersJSON() {
 // Core HTTP Primitives
 // -------------------------------------------------------------
 
-export async function apiGet(path, auth = false) {
+export async function apiGet(path, auth = false, options = {}) {
   try {
     const res = await fetch(`${API_BASE_URL}${path}`, {
       method: 'GET',
-      headers: auth ? getAuthHeaders() : {}
+      headers: auth ? getAuthHeaders() : {},
+      signal: options.signal
     });
 
     if (!res.ok) {
@@ -244,6 +245,12 @@ export const quotesApi = {
 // -------------------------------------------------------------
 
 export const bookingsApi = {
+  getHistory: () =>
+    apiGet('/bookings/mine?view=history', true),
+
+  getEarnings: (signal) =>
+    apiGet('/bookings/mine?view=earnings', true, { signal }),
+
   getMine: () =>
     apiGet('/bookings/mine', true),
 

@@ -44,7 +44,7 @@ function ProviderDashboard() {
   const pendingRequests = bookings.filter(b => b.status === 'pending');
   const completedBookings = bookings.filter(b => b.status === 'completed');
 
-  const totalEarnings = completedBookings.reduce((sum, b) => sum + (b.job?.budget || 0), 0);
+  const totalEarnings = completedBookings.reduce((sum, b) => sum + (b.agreedPrice ?? b.job?.budget ?? 0), 0);
   const avgRating = reviews.length
     ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1)
     : 'No ratings';

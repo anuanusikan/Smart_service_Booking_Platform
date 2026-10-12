@@ -3,6 +3,8 @@ const Booking = require('../models/Booking');
 const Job = require('../models/Job');
 const { declinePendingQuotes } = require('../services/quoteNotifications');
 const Notification = require('../models/Notification');
+const Quote = require('../models/Quote');
+const { resolveBookingPrices } = require('../services/bookingPrices');
 const authMiddleware = require('../middleware/auth');
 
 const router = express.Router();
@@ -69,12 +71,29 @@ router.get('/mine', authMiddleware, async (req, res) => {
       ? { provider: req.user.id }
       : { customer: req.user.id };
 
-    const bookings = await Booking.find(filter)
-      .populate('job')
-      .populate('provider', 'name email profilePicture')
-      .populate('customer', 'name email profilePicture');
+    if (req.query.view === 'history') filter.hiddenFor = { $ne: req.user.id };
+    const earningsOnly = req.query.view === 'earnings';
+    if (earningsOnly) filter.status = 'completed';
+    const query = Booking.find(filter);
+    if (earningsOnly) {
+      query.select('job provider customer status agreedPrice updatedAt')
+        .populate('job', 'title budget')
+        .populate('customer', 'name');
+    } else {
+      query.populate('job')
+        .populate('provider', 'name email profilePicture')
+        .populate('customer', 'name email profilePicture');
+    }
+    const bookings = await query.lean();
 
-    res.json(bookings);
+    // Recover prices for older bookings without rewriting historical records.
+    const legacy = bookings.filter(b => b.agreedPrice == null && b.job && ['accepted', 'completed'].includes(b.status));
+    const acceptedQuotes = legacy.length ? await Quote.find({
+      job: { $in: legacy.map(b => b.job._id) },
+      status: 'accepted',
+      ...(req.user.role === 'provider' ? { provider: req.user.id } : { customer: req.user.id })
+    }).select('job provider customer price').lean() : [];
+    res.json(resolveBookingPrices(bookings, acceptedQuotes));
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
@@ -119,7 +138,7 @@ router.put('/:id', authMiddleware, async (req, res) => {
       try {
         const updated = await Booking.findOneAndUpdate(
           { _id: booking._id, status: 'pending' },
-          { status: 'accepted' },
+          { status: 'accepted', agreedPrice: booking.job.budget },
           { new: true }
         );
         if (!updated) throw new Error('This booking is no longer pending');
@@ -146,6 +165,7 @@ router.put('/:id', authMiddleware, async (req, res) => {
       }
     }
     booking.status = status;
+    if (status === 'accepted') booking.agreedPrice = booking.job.budget;
 
     try {
       const statusTitle = status.charAt(0).toUpperCase() + status.slice(1);
@@ -190,7 +210,7 @@ router.delete('/:id/cancel', authMiddleware, async (req, res) => {
   }
 });
 
-// Either party deletes a finished (declined/completed) booking from their history
+// Hide a finished booking only from the requesting participant's history
 router.delete('/:id', authMiddleware, async (req, res) => {
   try {
     const booking = await Booking.findById(req.params.id);
@@ -210,7 +230,11 @@ router.delete('/:id', authMiddleware, async (req, res) => {
       return res.status(400).json({ message: 'Only declined or completed bookings can be removed' });
     }
 
-    await Booking.findByIdAndDelete(req.params.id);
+    await Booking.updateOne(
+      { _id: booking._id },
+      { $addToSet: { hiddenFor: req.user.id } },
+      { timestamps: false }
+    );
     res.json({ message: 'Booking removed from history' });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });

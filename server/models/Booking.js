@@ -16,6 +16,15 @@ const bookingSchema = new mongoose.Schema({
     ref: 'User',
     required: true
   },
+  hiddenFor: {
+    type: [mongoose.Schema.Types.ObjectId],
+    ref: 'User',
+    default: []
+  },
+  agreedPrice: {
+    type: Number,
+    min: 0
+  },
   status: {
     type: String,
     enum: ['pending', 'accepted', 'declined', 'completed'],
