@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import ProviderPortalLayout from '../components/ProviderPortalLayout';
 import { quotesApi } from '../services/api';
@@ -11,10 +11,10 @@ function MyQuotes() {
   const [refresh, setRefresh] = useState(0);
   let user = null;
   try {
-    user = JSON.parse(localStorage.getItem('user') || 'null');
+    user = JSON.parse(sessionStorage.getItem('user') || 'null');
   } catch { /* Show the login prompt for invalid stored user data. */ }
   const isProvider = user?.role === 'provider';
-  const hasToken = Boolean(localStorage.getItem('token'));
+  const hasToken = Boolean(sessionStorage.getItem('token'));
 
   useEffect(() => {
     if (!isProvider || !hasToken) return;

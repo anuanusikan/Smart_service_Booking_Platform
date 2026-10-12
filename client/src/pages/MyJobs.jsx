@@ -4,6 +4,7 @@ import CustomerPortalLayout from '../components/CustomerPortalLayout';
 import ProviderPortalLayout from '../components/ProviderPortalLayout';
 import JobCard from '../components/JobCard';
 import { jobsApi, quotesApi } from '../services/api';
+import { appointmentInput, appointmentISO } from '../utils/appointments';
 
 function MyJobs() {
   const [jobs, setJobs] = useState([]);
@@ -18,7 +19,7 @@ function MyJobs() {
 
   const user = (() => {
     try {
-      const item = localStorage.getItem('user');
+      const item = sessionStorage.getItem('user');
       return item ? JSON.parse(item) : null;
     } catch {
       return null;
@@ -45,7 +46,8 @@ function MyJobs() {
       description: job.description,
       category: job.category,
       location: job.location,
-      budget: job.budget
+      budget: job.budget,
+      scheduledAt: appointmentInput(job.scheduledAt)
     });
   };
 
@@ -70,7 +72,7 @@ function MyJobs() {
       return;
     }
 
-    const { ok, data } = await jobsApi.update(jobId, editForm);
+    const { ok, data } = await jobsApi.update(jobId, { ...editForm, scheduledAt: appointmentISO(editForm.scheduledAt) });
     if (ok) {
       setMessage('Job updated successfully');
       setEditingId(null);

@@ -12,7 +12,7 @@ function MessageThread({ bookingId, otherPersonName, onClose }) {
   const messageVersion = useRef(0);
   const user = (() => {
     try {
-      return JSON.parse(localStorage.getItem('user') || 'null');
+      return JSON.parse(sessionStorage.getItem('user') || 'null');
     } catch {
       return null;
     }

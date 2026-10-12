@@ -7,7 +7,7 @@ function MyReviews() {
   const [loading, setLoading] = useState(true);
   const user = (() => {
     try {
-      const item = localStorage.getItem('user');
+      const item = sessionStorage.getItem('user');
       return item ? JSON.parse(item) : null;
     } catch {
       return null;

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import CustomerPortalLayout from '../components/CustomerPortalLayout';
 import { apiUpload } from '../services/api';
+import { appointmentISO } from '../utils/appointments';
 
 function PostJob() {
   const navigate = useNavigate();
@@ -10,7 +11,8 @@ function PostJob() {
     description: '',
     category: '',
     location: '',
-    budget: ''
+    budget: '',
+    scheduledAt: ''
   });
   const [images, setImages] = useState([]);
   const [message, setMessage] = useState({ type: '', text: '' });
@@ -42,7 +44,12 @@ function PostJob() {
       return;
     }
 
-    const token = localStorage.getItem('token');
+    if (formData.scheduledAt && new Date(appointmentISO(formData.scheduledAt)).getTime() <= Date.now()) {
+      setMessage({ type: 'error', text: 'Choose a future appointment date and time.' });
+      return;
+    }
+
+    const token = sessionStorage.getItem('token');
     if (!token) {
       setMessage({ type: 'error', text: 'You must be logged in to post a job.' });
       return;
@@ -56,6 +63,7 @@ function PostJob() {
     data.append('category', formData.category);
     data.append('location', formData.location);
     data.append('budget', formData.budget);
+    data.append('scheduledAt', appointmentISO(formData.scheduledAt) || '');
     images.forEach((img) => data.append('images', img));
 
     try {
@@ -163,6 +171,13 @@ function PostJob() {
             value={formData.budget}
             onChange={handleChange}
           />
+
+          <div className="appointment-field">
+            <span className="appointment-kicker">Plan your visit</span>
+            <label htmlFor="job-appointment">Appointment date &amp; time <span>(optional)</span></label>
+            <input id="job-appointment" type="datetime-local" name="scheduledAt" value={formData.scheduledAt} onChange={handleChange} aria-describedby="appointment-hint" />
+            <p id="appointment-hint">Sri Lanka time (UTC +05:30). Leave blank if you want to arrange a time with the provider.</p>
+          </div>
 
           <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: 600, color: 'var(--navy)' }}>
             Attach Photos (optional, up to 3)

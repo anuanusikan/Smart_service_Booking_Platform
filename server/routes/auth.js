@@ -2,6 +2,7 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const Booking = require('../models/Booking');
 const multer = require('multer');
 const { storage: profileStorage } = require('../config/cloudinaryProfile');
 const uploadProfilePic = multer({ storage: profileStorage });
@@ -96,13 +97,14 @@ if (role && user.role !== role) {
 // GET public profile of a provider
 router.get('/provider/:id', async (req, res) => {
   try {
-    const provider = await User.findById(req.params.id).select('name role skills location rating hourlyRate createdAt');
+    const provider = await User.findById(req.params.id).select('name role skills location rating hourlyRate createdAt profilePicture');
 
     if (!provider || provider.role !== 'provider') {
       return res.status(404).json({ message: 'Provider not found' });
     }
 
-    res.json(provider);
+    const completedCount = await Booking.countDocuments({ provider: provider._id, status: 'completed' });
+    res.json({ ...provider.toObject(), completedCount });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }

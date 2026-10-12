@@ -4,6 +4,7 @@ const { storage } = require('../config/cloudinary');
 const upload = multer({ storage });
 const express = require('express');
 const Job = require('../models/Job');
+const { parseAppointment } = require('../services/appointments');
 const authMiddleware = require('../middleware/auth');
 
 const router = express.Router();
@@ -30,6 +31,9 @@ router.post('/', authMiddleware, upload.array('images', 3), async (req, res) => 
       return res.status(400).json({ message: 'Budget must be a positive number' });
     }
     
+    const appointment = parseAppointment(req.body.scheduledAt);
+    if (appointment.error) return res.status(400).json({ message: appointment.error });
+
     const imageUrls = req.files ? req.files.map(file => file.path) : [];
 
     const newJob = new Job({
@@ -39,7 +43,8 @@ router.post('/', authMiddleware, upload.array('images', 3), async (req, res) => 
       location,
       budget,
       postedBy: req.user.id,
-      images: imageUrls
+      images: imageUrls,
+      scheduledAt: appointment.value
     });
 
     await newJob.save();
@@ -146,6 +151,10 @@ router.put('/:id', authMiddleware, async (req, res) => {
     }
 
     const { title, description, category, location, budget } = req.body;
+
+    const appointment = parseAppointment(req.body.scheduledAt, job.scheduledAt);
+    if (appointment.error) return res.status(400).json({ message: appointment.error });
+    job.scheduledAt = appointment.value;
 
     job.title = title ?? job.title;
     job.description = description ?? job.description;

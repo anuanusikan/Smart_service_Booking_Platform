@@ -1,6 +1,9 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { messagesApi,notificationsApi} from '../services/api';
+import { messagesApi, notificationsApi } from '../services/api';
+import useNotificationSettings from '../hooks/useNotificationSettings';
+import { notificationEnabled, readNotificationSettings, hasNewAlert } from '../utils/notificationSettings';
+import { prepareNotificationSound, playNotificationSound } from '../utils/notificationSound';
 
 function Navbar({ onProfileClick, user, onOpenChat }) {
   const navigate = useNavigate();
@@ -12,26 +15,31 @@ function Navbar({ onProfileClick, user, onOpenChat }) {
   const [notifTab, setNotifTab] = useState('alerts'); // 'alerts' | 'settings'
   const [conversations, setConversations] = useState([]);
   const [notifications, setNotifications] = useState([]);
-  const [unreadNotifs, setUnreadNotifs] = useState(0);
   const [loadingChats, setLoadingChats] = useState(false);
   const [loadingNotifs, setLoadingNotifs] = useState(false);
 
-  const [settings, setSettings] = useState(() => {
-    try {
-      const saved = localStorage.getItem('serviceSync_notif_settings');
-      return saved ? JSON.parse(saved) : {
-        bookingAlerts: true,
-        messageAlerts: true,
-        quoteAlerts: true,
-        sound: false
-      };
-    } catch {
-      return { bookingAlerts: true, messageAlerts: true, quoteAlerts: true, sound: false };
-    }
-  });
+  const userId = user?.id || user?._id;
+  const [settings, updateSetting] = useNotificationSettings(userId);
+  const visibleNotifications = notifications.filter(item => notificationEnabled(item, settings));
+  const unreadNotifs = visibleNotifications.filter(item => !item.read).length;
+  const seenNotifications = useRef(null);
+  const notificationsInFlight = useRef(false);
+  const conversationsInFlight = useRef(false);
+
+  useEffect(() => {
+    const unlockSound = () => {
+      if (readNotificationSettings(userId).sound) prepareNotificationSound();
+    };
+    window.addEventListener('pointerdown', unlockSound);
+    window.addEventListener('keydown', unlockSound);
+    return () => {
+      window.removeEventListener('pointerdown', unlockSound);
+      window.removeEventListener('keydown', unlockSound);
+    };
+  }, [userId]);
 
   const menuRef = useRef(null);
-  const token = localStorage.getItem('token');
+  const token = sessionStorage.getItem('token');
 
   // Close dropdown on click outside
   useEffect(() => {
@@ -44,46 +52,55 @@ function Navbar({ onProfileClick, user, onOpenChat }) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Fetch conversations
-  const fetchConversations = () => {
-    if (!token || !user) return;
+  const fetchConversations = useCallback(async () => {
+    if (!token || !userId || conversationsInFlight.current) return;
+    conversationsInFlight.current = true;
     setLoadingChats(true);
-    messagesApi.getConversations()
-      .then(data => {
-        setConversations(Array.isArray(data) ? data : []);
-        setLoadingChats(false);
-      })
-      .catch(() => setLoadingChats(false));
-  };
+    try {
+      const data = await messagesApi.getConversations();
+      if (sessionStorage.getItem('token') !== token) return;
+      setConversations(Array.isArray(data) ? data : []);
+    } finally {
+      conversationsInFlight.current = false;
+      setLoadingChats(false);
+    }
+  }, [token, userId]);
 
-  // Fetch notifications
-  const fetchNotifications = () => {
-    if (!token || !user) return;
+  const fetchNotifications = useCallback(async () => {
+    if (!token || !userId || notificationsInFlight.current) return;
+    notificationsInFlight.current = true;
     setLoadingNotifs(true);
-    notificationsApi.getNotifications()
-      .then(data => {
-        if (data && Array.isArray(data.notifications)) {
-          setNotifications(data.notifications);
-          setUnreadNotifs(data.unreadCount || 0);
+    try {
+      const data = await notificationsApi.getNotifications();
+      if (sessionStorage.getItem('token') !== token) return;
+      if (data && Array.isArray(data.notifications)) {
+        const currentSettings = readNotificationSettings(userId);
+        // Initial history is silent. Record disabled and read alerts too so
+        // changing preferences or reopening the menu never replays them.
+        if (seenNotifications.current && currentSettings.sound &&
+            hasNewAlert(data.notifications, seenNotifications.current, currentSettings)) {
+          playNotificationSound();
         }
-        setLoadingNotifs(false);
-      })
-      .catch(() => setLoadingNotifs(false));
-  };
+        if (!seenNotifications.current) seenNotifications.current = new Set();
+        data.notifications.forEach(item => seenNotifications.current.add(item._id));
+        setNotifications(data.notifications);
+      }
+    } finally {
+      notificationsInFlight.current = false;
+      setLoadingNotifs(false);
+    }
+  }, [token, userId]);
 
-  // Polling for updates
   useEffect(() => {
-    if (!user || !token) return;
+    if (!userId || !token) return;
     fetchNotifications();
     fetchConversations();
-
     const interval = setInterval(() => {
       fetchNotifications();
       fetchConversations();
     }, 8000);
-
     return () => clearInterval(interval);
-  }, [user, token]);
+  }, [userId, token, fetchNotifications, fetchConversations]);
 
   const toggleMenu = (menuName) => {
     if (openMenu === menuName) {
@@ -97,9 +114,9 @@ function Navbar({ onProfileClick, user, onOpenChat }) {
 
   const handleMarkAsRead = async (notifId, link) => {
     try {
-      await notificationsApi.markAsRead(notifId);
+      const result = await notificationsApi.markAsRead(notifId);
+      if (!result.ok) return;
       setNotifications(prev => prev.map(n => n._id === notifId ? { ...n, read: true } : n));
-      setUnreadNotifs(prev => Math.max(0, prev - 1));
     } catch (err) {
       // ignore
     }
@@ -112,9 +129,9 @@ function Navbar({ onProfileClick, user, onOpenChat }) {
 
   const handleMarkAllRead = async () => {
     try {
-      await notificationsApi.markAllAsRead();
+      const result = await notificationsApi.markAllAsRead();
+      if (!result.ok) return;
       setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-      setUnreadNotifs(0);
     } catch (err) {
       // ignore
     }
@@ -122,18 +139,12 @@ function Navbar({ onProfileClick, user, onOpenChat }) {
 
   const handleClearAll = async () => {
     try {
-      await notificationsApi.clearAll();
+      const result = await notificationsApi.clearAll();
+      if (!result.ok) return;
       setNotifications([]);
-      setUnreadNotifs(0);
     } catch (err) {
       // ignore
     }
-  };
-
-  const updateSetting = (key) => {
-    const updated = { ...settings, [key]: !settings[key] };
-    setSettings(updated);
-    localStorage.setItem('serviceSync_notif_settings', JSON.stringify(updated));
   };
 
   const formatTime = (dateStr) => {
@@ -319,7 +330,7 @@ function Navbar({ onProfileClick, user, onOpenChat }) {
                 type="button"
                 className={`nav-icon-btn ${openMenu === 'notifications' ? 'active' : ''}`}
                 onClick={() => toggleMenu('notifications')}
-                title="Notifications"
+                title="Unread alerts in your recent notifications"
               >
                 <span>🔔</span> Notifications
                 {unreadNotifs > 0 && <span className="nav-badge">{unreadNotifs}</span>}
@@ -379,7 +390,7 @@ function Navbar({ onProfileClick, user, onOpenChat }) {
                               Mark all read
                             </button>
                           )}
-                          {notifications.length > 0 && (
+                          {visibleNotifications.length > 0 && (
                             <button
                               type="button"
                               onClick={handleClearAll}
@@ -393,15 +404,15 @@ function Navbar({ onProfileClick, user, onOpenChat }) {
 
                       <div className="nav-dropdown-body">
                         {loadingNotifs && <p style={{ padding: '16px', margin: 0, fontSize: '13px', color: 'var(--slate)' }}>Loading alerts...</p>}
-                        {!loadingNotifs && notifications.length === 0 && (
+                        {!loadingNotifs && visibleNotifications.length === 0 && (
                           <div style={{ padding: '30px 16px', textAlign: 'center' }}>
                             <span style={{ fontSize: '28px', display: 'block', marginBottom: '6px' }}>🎉</span>
                             <p style={{ margin: 0, fontSize: '13px', fontWeight: 600, color: 'var(--navy)' }}>You're all caught up!</p>
-                            <p style={{ margin: '4px 0 0', fontSize: '12px', color: 'var(--slate)' }}>No new alerts at this time.</p>
+                            <p style={{ margin: '4px 0 0', fontSize: '12px', color: 'var(--slate)' }}>No alerts matching your preferences.</p>
                           </div>
                         )}
 
-                        {!loadingNotifs && notifications.map((n) => {
+                        {!loadingNotifs && visibleNotifications.map((n) => {
                           const iconMeta = getNotifIcon(n.type);
                           return (
                             <div
@@ -441,7 +452,8 @@ function Navbar({ onProfileClick, user, onOpenChat }) {
                         <input
                           type="checkbox"
                           className="switch-input"
-                          checked={settings.bookingAlerts}
+                          aria-label="Booking alerts"
+                checked={settings.bookingAlerts}
                           onChange={() => updateSetting('bookingAlerts')}
                         />
                       </div>
@@ -454,7 +466,8 @@ function Navbar({ onProfileClick, user, onOpenChat }) {
                         <input
                           type="checkbox"
                           className="switch-input"
-                          checked={settings.messageAlerts}
+                          aria-label="Message alerts"
+                checked={settings.messageAlerts}
                           onChange={() => updateSetting('messageAlerts')}
                         />
                       </div>
@@ -467,7 +480,8 @@ function Navbar({ onProfileClick, user, onOpenChat }) {
                         <input
                           type="checkbox"
                           className="switch-input"
-                          checked={settings.quoteAlerts}
+                          aria-label="Quote alerts"
+                checked={settings.quoteAlerts}
                           onChange={() => updateSetting('quoteAlerts')}
                         />
                       </div>
@@ -475,12 +489,13 @@ function Navbar({ onProfileClick, user, onOpenChat }) {
                       <div className="setting-switch">
                         <div>
                           <div className="switch-label">Sound Notifications</div>
-                          <div className="switch-sublabel">Play sound effect on new notifications</div>
+                          <div className="switch-sublabel">Play a gentle chime for new enabled alerts</div>
                         </div>
                         <input
                           type="checkbox"
                           className="switch-input"
-                          checked={settings.sound}
+                          aria-label="Notification sound"
+                checked={settings.sound}
                           onChange={() => updateSetting('sound')}
                         />
                       </div>

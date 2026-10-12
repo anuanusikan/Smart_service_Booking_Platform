@@ -8,7 +8,7 @@ function ProviderPortalLayout({ children, title, subtitle, extraAction }) {
 
   const readUser = () => {
     try {
-      const item = localStorage.getItem('user');
+      const item = sessionStorage.getItem('user');
       return item ? JSON.parse(item) : null;
     } catch {
       return null;
@@ -26,13 +26,13 @@ function ProviderPortalLayout({ children, title, subtitle, extraAction }) {
     window.addEventListener('storage', handleUpdate);
 
     // Sync with backend on mount if profile picture is missing
-    const token = localStorage.getItem('token');
+    const token = sessionStorage.getItem('token');
     if (token) {
       authApi.getMe().then((me) => {
         if (me && me.profilePicture && me.profilePicture !== user?.profilePicture) {
           const stored = readUser() || {};
           const synced = { ...stored, profilePicture: me.profilePicture };
-          localStorage.setItem('user', JSON.stringify(synced));
+          sessionStorage.setItem('user', JSON.stringify(synced));
           setUser(synced);
         }
       }).catch(() => {});

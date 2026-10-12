@@ -1,3 +1,4 @@
+import { appointmentLabel } from '../utils/appointments';
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import MessageThread from './MessageThread';
@@ -16,13 +17,13 @@ function MyBookings() {
 
   const user = (() => {
     try {
-      const item = localStorage.getItem('user');
+      const item = sessionStorage.getItem('user');
       return item ? JSON.parse(item) : null;
     } catch {
       return null;
     }
   })();
-  const token = localStorage.getItem('token');
+  const token = sessionStorage.getItem('token');
 
   const fetchBookings = () => {
     Promise.all([
@@ -187,6 +188,7 @@ function MyBookings() {
       <div className="job-cards-container">
         {activeTab === 'active' && activeBookings.map((booking) => (
           <div key={booking._id} className="job-card">
+            <p className="job-appointment">{appointmentLabel(booking.job?.scheduledAt)}</p>
             {/* Header: Status badge, category, date, budget */}
             <div className="job-card-header">
               <div className="job-card-pills">
@@ -425,6 +427,7 @@ function MyBookings() {
 
         {activeTab === 'history' && historyBookings.map((booking) => (
           <div key={booking._id} className="job-card" style={{ opacity: 0.9 }}>
+            <p className="job-appointment">{appointmentLabel(booking.job?.scheduledAt)}</p>
             {/* Header: Status badge, category, date, budget */}
             <div className="job-card-header">
               <div className="job-card-pills">

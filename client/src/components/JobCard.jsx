@@ -1,3 +1,5 @@
+import { appointmentLabel } from '../utils/appointments';
+
 function JobCard({
   job,
   variant = 'browse', // 'browse' | 'manage'
@@ -106,6 +108,12 @@ function JobCard({
             onChange={(e) => setEditForm({ ...editForm, budget: e.target.value })}
           />
 
+          <div className="appointment-field">
+            <label htmlFor={`appointment-${job._id}`}>Appointment date &amp; time <span>(optional)</span></label>
+            <input id={`appointment-${job._id}`} type="datetime-local" value={editForm.scheduledAt || ''}
+              onChange={e => setEditForm({ ...editForm, scheduledAt: e.target.value })} />
+            <p>Sri Lanka time (UTC +05:30). Clear the field to arrange a time later.</p>
+          </div>
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '6px' }}>
             <button type="button" onClick={onCancelEdit} className="btn-outline btn-sm">
               Cancel
@@ -120,6 +128,8 @@ function JobCard({
           {/* TITLE & DESCRIPTION */}
           <h3 className="job-card-title">{job.title}</h3>
           <p className="job-card-desc">{job.description}</p>
+
+          <p className="job-appointment"><span aria-hidden="true">&#9687;</span> {appointmentLabel(job.scheduledAt)}</p>
 
           {/* CARD FOOTER & ACTIONS */}
           <div className="job-card-footer">

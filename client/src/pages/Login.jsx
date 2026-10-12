@@ -25,8 +25,8 @@ function Login({ onLoginSuccess }) {
       const { ok, data } = await authApi.login(formData.email,formData.password,loginAs);
 
       if (ok) {
-        localStorage.setItem('token', data.token);
-        localStorage.setItem('user', JSON.stringify(data.user));
+        sessionStorage.setItem('token', data.token);
+        sessionStorage.setItem('user', JSON.stringify(data.user));
         window.dispatchEvent(new Event('userProfileUpdated'));
         if (onLoginSuccess) onLoginSuccess();
         setMessage('Login successful!');

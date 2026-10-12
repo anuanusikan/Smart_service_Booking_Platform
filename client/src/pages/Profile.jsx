@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { authApi } from '../services/api';
+import useNotificationSettings from '../hooks/useNotificationSettings';
 
 function Profile({ onClose, onProfileUpdate }) {
   const navigate = useNavigate();
@@ -14,21 +15,12 @@ function Profile({ onClose, onProfileUpdate }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  const [notifSettings, setNotifSettings] = useState(() => {
-    try {
-      const saved = localStorage.getItem('serviceSync_notif_settings');
-      return saved ? JSON.parse(saved) : {
-        bookingAlerts: true,
-        messageAlerts: true,
-        quoteAlerts: true,
-        sound: false
-      };
-    } catch {
-      return { bookingAlerts: true, messageAlerts: true, quoteAlerts: true, sound: false };
-    }
-  });
-
-  const token = localStorage.getItem('token');
+  let userId;
+  try {
+    const user = JSON.parse(sessionStorage.getItem('user') || 'null');
+    userId = user?.id || user?._id;
+  } catch { /* Preferences fall back to defaults. */ }
+  const [notifSettings, toggleNotifSetting] = useNotificationSettings(userId);
 
   const fetchProfile = async () => {
     try {
@@ -48,15 +40,15 @@ function Profile({ onClose, onProfileUpdate }) {
           setPicPreview(data.profilePicture);
         }
 
-        // Keep localStorage and app state synced
-        const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
+        // Keep session storage and app state synced
+        const storedUser = JSON.parse(sessionStorage.getItem('user') || '{}');
         if (storedUser && (storedUser.profilePicture !== data.profilePicture || storedUser.name !== data.name)) {
           const syncedUser = {
             ...storedUser,
             name: data.name || storedUser.name,
             profilePicture: data.profilePicture || ''
           };
-          localStorage.setItem('user', JSON.stringify(syncedUser));
+          sessionStorage.setItem('user', JSON.stringify(syncedUser));
           window.dispatchEvent(new Event('userProfileUpdated'));
         }
       }
@@ -95,13 +87,13 @@ function Profile({ onClose, onProfileUpdate }) {
         setMessage({ type: 'success', text: '✓ Profile updated successfully.' });
 
         const updatedData = result.data?.user || result.user || {};
-        const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
+        const storedUser = JSON.parse(sessionStorage.getItem('user') || '{}');
         const updatedUser = {
           ...storedUser,
           name: updatedData.name || storedUser.name,
           profilePicture: updatedData.profilePicture !== undefined ? updatedData.profilePicture : (storedUser.profilePicture || '')
         };
-        localStorage.setItem('user', JSON.stringify(updatedUser));
+        sessionStorage.setItem('user', JSON.stringify(updatedUser));
         window.dispatchEvent(new Event('userProfileUpdated'));
 
         if (onProfileUpdate) onProfileUpdate(updatedUser);
@@ -116,17 +108,12 @@ function Profile({ onClose, onProfileUpdate }) {
     } finally {
       setSaving(false);
     }
-  };
 
-  const toggleNotifSetting = (key) => {
-    const updated = { ...notifSettings, [key]: !notifSettings[key] };
-    setNotifSettings(updated);
-    localStorage.setItem('serviceSync_notif_settings', JSON.stringify(updated));
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    sessionStorage.removeItem('token');
+    sessionStorage.removeItem('user');
     if (onProfileUpdate) onProfileUpdate();
     onClose();
     navigate('/');
@@ -331,6 +318,7 @@ function Profile({ onClose, onProfileUpdate }) {
               <input
                 type="checkbox"
                 className="switch-input"
+                aria-label="Booking alerts"
                 checked={notifSettings.bookingAlerts}
                 onChange={() => toggleNotifSetting('bookingAlerts')}
               />
@@ -344,6 +332,7 @@ function Profile({ onClose, onProfileUpdate }) {
               <input
                 type="checkbox"
                 className="switch-input"
+                aria-label="Message alerts"
                 checked={notifSettings.messageAlerts}
                 onChange={() => toggleNotifSetting('messageAlerts')}
               />
@@ -352,11 +341,12 @@ function Profile({ onClose, onProfileUpdate }) {
             <div className="setting-switch" style={{ background: 'var(--bg)', borderRadius: '8px' }}>
               <div>
                 <div className="switch-label">Quote &amp; Bid Alerts</div>
-                <div className="switch-sublabel">Alert when quotes are accepted</div>
+                <div className="switch-sublabel">Alert on new quotes and decisions</div>
               </div>
               <input
                 type="checkbox"
                 className="switch-input"
+                aria-label="Quote alerts"
                 checked={notifSettings.quoteAlerts}
                 onChange={() => toggleNotifSetting('quoteAlerts')}
               />
@@ -365,11 +355,12 @@ function Profile({ onClose, onProfileUpdate }) {
             <div className="setting-switch" style={{ background: 'var(--bg)', borderRadius: '8px' }}>
               <div>
                 <div className="switch-label">Sound Effects</div>
-                <div className="switch-sublabel">Audio chimes for notifications</div>
+                <div className="switch-sublabel">A gentle chime for new enabled alerts</div>
               </div>
               <input
                 type="checkbox"
                 className="switch-input"
+                aria-label="Notification sound"
                 checked={notifSettings.sound}
                 onChange={() => toggleNotifSetting('sound')}
               />

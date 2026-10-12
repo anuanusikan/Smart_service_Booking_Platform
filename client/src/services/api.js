@@ -6,7 +6,7 @@ export const API_BASE_URL =
 // -------------------------------------------------------------
 
 export function getAuthHeaders() {
-  const token = localStorage.getItem('token');
+  const token = sessionStorage.getItem('token');
 
   return token
     ? { Authorization: `Bearer ${token}` }
@@ -251,8 +251,8 @@ export const bookingsApi = {
   getEarnings: (signal) =>
     apiGet('/bookings/mine?view=earnings', true, { signal }),
 
-  getMine: () =>
-    apiGet('/bookings/mine', true),
+  getMine: (signal) =>
+    apiGet('/bookings/mine', true, { signal }),
 
   create: (bookingData) =>
     apiPost('/bookings', bookingData, true),

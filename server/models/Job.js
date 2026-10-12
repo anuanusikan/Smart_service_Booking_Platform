@@ -17,6 +17,10 @@ const jobSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
+  scheduledAt: {
+    type: Date,
+    default: null
+  },
   budget: {
     type: Number,
     default: 0

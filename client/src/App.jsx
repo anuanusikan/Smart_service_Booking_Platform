@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import Home from './pages/Home';
 import Register from './pages/Register';
@@ -25,8 +25,8 @@ function App() {
 
   const getUser = () => {
     try {
-      if (!localStorage.getItem('token')) return null;
-      const item = localStorage.getItem('user');
+      if (!sessionStorage.getItem('token')) return null;
+      const item = sessionStorage.getItem('user');
       const stored = item ? JSON.parse(item) : null;
       return ['customer', 'provider'].includes(stored?.role) ? stored : null;
     } catch {
@@ -45,14 +45,14 @@ function App() {
   };
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
+    const token = sessionStorage.getItem('token');
     if (token) {
       authApi.getMe().then((me) => {
         // Ignore a profile response belonging to a previous login session.
-        if (localStorage.getItem('token') !== token) return;
+        if (sessionStorage.getItem('token') !== token) return;
         if (me?.message === 'Invalid or expired token' || me?.message === 'No token provided, access denied') {
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
+          sessionStorage.removeItem('token');
+          sessionStorage.removeItem('user');
           setUser(null);
         } else if (me && (me._id || me.id)) {
           const stored = getUser() || {};
@@ -64,7 +64,7 @@ function App() {
             role: me.role,
             profilePicture: me.profilePicture || ''
           };
-          localStorage.setItem('user', JSON.stringify(syncedUser));
+          sessionStorage.setItem('user', JSON.stringify(syncedUser));
           setUser(syncedUser);
           window.dispatchEvent(new Event('userProfileUpdated'));
         }
@@ -84,6 +84,8 @@ function App() {
     };
   }, []);
 
+  const requireLogin = (page) => user ? page : <Navigate to="/login" replace />;
+
   return (
     <>
       <Navbar
@@ -96,17 +98,17 @@ function App() {
         <Route path="/" element={<Home />} />
         <Route path="/register" element={<Register />} />
         <Route path="/login" element={<Login onLoginSuccess={refreshUser} />} />
-        <Route path="/post-job" element={<PostJob />} />
+        <Route path="/post-job" element={requireLogin(<PostJob />)} />
         <Route path="/jobs" element={<BrowseJobs />} />
-        <Route path="/my-bookings" element={<MyBookings />} />
-        <Route path="/my-quotes" element={<MyQuotes />} />
-        <Route path="/my-jobs" element={<MyJobs />} />
-        <Route path="/my-reviews" element={<MyReviews />} />
+        <Route path="/my-bookings" element={requireLogin(<MyBookings />)} />
+        <Route path="/my-quotes" element={requireLogin(<MyQuotes />)} />
+        <Route path="/my-jobs" element={requireLogin(<MyJobs />)} />
+        <Route path="/my-reviews" element={requireLogin(<MyReviews />)} />
         <Route path="/provider/:id" element={<ProviderProfile />} />
-        <Route path="/dashboard" element={<CustomerDashboard />} />
-        <Route path="/provider-dashboard" element={<ProviderDashboard />} />
-        <Route path="/provider-earnings" element={<ProviderEarnings />} />
-        <Route path="/provider-schedule" element={<ProviderSchedule />} />
+        <Route path="/dashboard" element={requireLogin(<CustomerDashboard />)} />
+        <Route path="/provider-dashboard" element={requireLogin(<ProviderDashboard />)} />
+        <Route path="/provider-earnings" element={requireLogin(<ProviderEarnings />)} />
+        <Route path="/provider-schedule" element={requireLogin(<ProviderSchedule />)} />
       </Routes>
 
       {/* Global Profile Modal */}
