@@ -62,7 +62,7 @@ router.post('/', authMiddleware, async (req, res) => {
 router.get('/provider/:providerId', async (req, res) => {
   try {
     const reviews = await Review.find({ provider: req.params.providerId })
-      .populate('customer', 'name')
+      .populate('customer', 'name profilePicture')
       .sort({ createdAt: -1 });
     res.json(reviews);
   } catch (err) {

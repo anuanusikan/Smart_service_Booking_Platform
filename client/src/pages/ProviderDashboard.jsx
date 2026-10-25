@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import ProviderPortalLayout from '../components/ProviderPortalLayout';
 import { jobsApi, bookingsApi, reviewsApi } from '../services/api';
+import './DashboardOverview.css';
 
 function ProviderDashboard() {
   const [jobs, setJobs] = useState([]);
@@ -30,7 +31,7 @@ function ProviderDashboard() {
         setLoading(false);
       })
       .catch(() => setLoading(false));
-  }, []);
+  }, [user?.id]);
 
   if (loading) {
     return (
@@ -51,34 +52,38 @@ function ProviderDashboard() {
   const latestReviews = [...reviews].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 3);
 
   const headerAction = (
-    <Link to="/provider-schedule">
-      <button style={{ background: 'var(--bg)', color: 'var(--navy)', border: '1px solid var(--border)' }}>
-        📅 View Schedule
-      </button>
-    </Link>
+    <Link to="/provider-schedule" className="overview-primary-action">View schedule <span aria-hidden="true">↗</span></Link>
   );
 
   return (
-    <ProviderPortalLayout
-      title={`Welcome back, ${user?.name?.split(' ')[0] || 'Provider'}`}
-      subtitle="Here is what is happening with your service business today."
-      extraAction={headerAction}
-    >
+    <ProviderPortalLayout>
+      <section className="dashboard-overview provider-overview">
+      <header className="overview-hero">
+        <div><p className="overview-kicker">YOUR BUSINESS AT A GLANCE</p>
+        <h1>Your business activity</h1>
+        <p>{activeBookings.length || pendingRequests.length || jobs.length
+          ? `${activeBookings.length} active ${activeBookings.length === 1 ? 'booking' : 'bookings'} · ${pendingRequests.length} pending ${pendingRequests.length === 1 ? 'request' : 'requests'} · ${jobs.length} ${jobs.length === 1 ? 'job' : 'jobs'} to explore`
+          : 'You’re all caught up. New opportunities will appear here.'}</p></div>
+      </header>
+      <div className="overview-toolbar"><div><h2>Business overview</h2><p>Your performance and latest activity</p></div>{headerAction}</div>
       {/* STATS OVERVIEW */}
       <div className="stat-grid">
-        <div className="stat-card">
+        <div className="stat-card metric-teal">
           <p className="stat-label">Total Earnings</p>
           <p className="stat-value" style={{ color: 'var(--success)' }}>Rs. {totalEarnings.toLocaleString()}</p>
+          <p className="overview-metric-hint">From {completedBookings.length} completed bookings</p>
         </div>
-        <div className="stat-card">
+        <div className="stat-card metric-indigo">
           <p className="stat-label">Active Bookings</p>
           <p className="stat-value">{activeBookings.length}</p>
+          <p className="overview-metric-hint">Accepted and in progress</p>
         </div>
-        <div className="stat-card">
+        <div className="stat-card metric-blue">
           <p className="stat-label">New Matched Jobs</p>
           <p className="stat-value" style={{ color: 'var(--primary)' }}>{jobs.length}</p>
+          <p className="overview-metric-hint">Open opportunities to explore</p>
         </div>
-        <div className="stat-card">
+        <div className="stat-card metric-amber">
           <p className="stat-label">Client Rating</p>
           <p className="stat-value">
             {avgRating}{reviews.length > 0 ? ' ★' : ''}
@@ -86,13 +91,14 @@ function ProviderDashboard() {
               ({reviews.length})
             </span>
           </p>
+          <p className="overview-metric-hint">Based on {reviews.length} client reviews</p>
         </div>
       </div>
 
       {/* DASHBOARD GRIDS */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px', marginTop: '10px' }}>
+      <div className="overview-panels provider-panels">
         {/* NEW OPPORTUNITIES */}
-        <div className="card">
+        <div className="card overview-panel">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
             <div>
               <p className="eyebrow" style={{ margin: 0 }}>High Match Opportunities</p>
@@ -121,7 +127,7 @@ function ProviderDashboard() {
         </div>
 
         {/* ACTIVE & PENDING BOOKINGS */}
-        <div className="card">
+        <div className="card overview-panel panel-teal">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
             <div>
               <p className="eyebrow" style={{ margin: 0 }}>Bookings &amp; Inquiries</p>
@@ -152,7 +158,7 @@ function ProviderDashboard() {
         </div>
 
         {/* LATEST REVIEWS */}
-        <div className="card">
+        <div className="card overview-panel panel-reviews">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
             <div>
               <p className="eyebrow" style={{ margin: 0 }}>Feedback</p>
@@ -179,6 +185,7 @@ function ProviderDashboard() {
           </Link>
         </div>
       </div>
+      </section>
     </ProviderPortalLayout>
   );
 }

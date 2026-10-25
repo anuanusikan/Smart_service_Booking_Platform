@@ -2,20 +2,12 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import CustomerPortalLayout from '../components/CustomerPortalLayout';
 import { jobsApi, bookingsApi } from '../services/api';
+import './DashboardOverview.css';
 
 function CustomerDashboard() {
   const [jobs, setJobs] = useState([]);
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
-
-  const user = (() => {
-    try {
-      const item = sessionStorage.getItem('user');
-      return item ? JSON.parse(item) : null;
-    } catch {
-      return null;
-    }
-  })();
 
   useEffect(() => {
     Promise.all([
@@ -46,37 +38,43 @@ function CustomerDashboard() {
   const recentPending = bookings.filter(b => b.status === 'pending').slice(0, 3);
 
   const headerAction = (
-    <Link to="/post-job">
-      <button className="btn-success">+ Post a New Job</button>
-    </Link>
+    <Link to="/post-job" className="overview-primary-action">+ Post a new job <span aria-hidden="true">↗</span></Link>
   );
 
   return (
-    <CustomerPortalLayout
-      title={`Welcome back, ${user?.name?.split(' ')[0] || 'Client'}`}
-      subtitle="Manage your active service postings and incoming booking requests."
-      extraAction={headerAction}
-    >
+    <CustomerPortalLayout>
+      <section className="dashboard-overview customer-overview">
+      <header className="overview-hero">
+        <div><p className="overview-kicker">YOUR SERVICE HUB</p>
+        <h1>Your service activity</h1>
+        <p>{activeJobs.length || pendingRequests.length
+          ? `${activeJobs.length} active ${activeJobs.length === 1 ? 'job' : 'jobs'} · ${pendingRequests.length} ${pendingRequests.length === 1 ? 'request' : 'requests'} awaiting review`
+          : 'You’re all caught up. Post a job whenever you need a hand.'}</p></div>
+      </header>
+      <div className="overview-toolbar"><div><h2>Dashboard overview</h2><p>Your jobs and incoming requests</p></div>{headerAction}</div>
       {/* STATS CARDS */}
       <div className="stat-grid">
-        <div className="stat-card">
+        <div className="stat-card metric-blue">
           <p className="stat-label">Active Job Posts</p>
           <p className="stat-value" style={{ color: 'var(--primary)' }}>{activeJobs.length}</p>
+          <p className="overview-metric-hint">Open and assigned jobs</p>
         </div>
-        <div className="stat-card">
+        <div className="stat-card metric-amber">
           <p className="stat-label">Pending Inquiries</p>
           <p className="stat-value" style={{ color: '#F59E0B' }}>{pendingRequests.length}</p>
+          <p className="overview-metric-hint">Awaiting your decision</p>
         </div>
-        <div className="stat-card">
+        <div className="stat-card metric-teal">
           <p className="stat-label">Completed Services</p>
           <p className="stat-value" style={{ color: 'var(--success)' }}>{completedJobs.length}</p>
+          <p className="overview-metric-hint">Services successfully finished</p>
         </div>
       </div>
 
       {/* DASHBOARD SECTIONS */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px', marginTop: '10px' }}>
+      <div className="overview-panels customer-panels">
         {/* POSTED JOBS */}
-        <div className="card">
+        <div className="card overview-panel">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
             <div>
               <p className="eyebrow" style={{ margin: 0 }}>My Listings</p>
@@ -105,7 +103,7 @@ function CustomerDashboard() {
         </div>
 
         {/* BOOKING REQUESTS */}
-        <div className="card">
+        <div className="card overview-panel panel-teal">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
             <div>
               <p className="eyebrow" style={{ margin: 0 }}>Provider Inquiries</p>
@@ -137,6 +135,7 @@ function CustomerDashboard() {
           </Link>
         </div>
       </div>
+      </section>
     </CustomerPortalLayout>
   );
 }
