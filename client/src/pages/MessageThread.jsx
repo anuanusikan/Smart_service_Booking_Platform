@@ -18,6 +18,24 @@ function MessageThread({ bookingId, otherPersonName, onClose }) {
     }
   })();
   const bottomRef = useRef(null);
+  const overlayRef = useRef(null);
+
+  useEffect(() => {
+    const viewport = window.visualViewport;
+    const resize = () => {
+      overlayRef.current?.style.setProperty('--chat-height', `${viewport?.height || window.innerHeight}px`);
+      overlayRef.current?.style.setProperty('--chat-top', `${viewport?.offsetTop || 0}px`);
+    };
+    resize();
+    viewport?.addEventListener('resize', resize);
+    viewport?.addEventListener('scroll', resize);
+    window.addEventListener('resize', resize);
+    return () => {
+      viewport?.removeEventListener('resize', resize);
+      viewport?.removeEventListener('scroll', resize);
+      window.removeEventListener('resize', resize);
+    };
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -78,28 +96,22 @@ function MessageThread({ bookingId, otherPersonName, onClose }) {
 
   return (
     <div
+      ref={overlayRef}
+      className="chat-overlay"
       onClick={onClose}
-      style={{
-        position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-        background: 'rgba(17, 24, 39, 0.5)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        zIndex: 1000
-      }}
     >
       <div
+        className="chat-dialog"
+        role="dialog"
+        aria-label={`Chat with ${otherPersonName || 'your service partner'}`}
         onClick={(e) => e.stopPropagation()}
-        style={{
-          width: '400px', height: '520px', background: 'white',
-          borderRadius: '12px', display: 'flex', flexDirection: 'column',
-          boxShadow: '0 12px 40px rgba(0,0,0,0.2)'
-        }}
       >
-        <div style={{ padding: '16px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <p style={{ margin: 0, fontWeight: 600 }}>{otherPersonName}</p>
+        <div className="chat-header" style={{ padding: '16px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <p style={{ margin: 0, fontWeight: 600, overflowWrap: 'anywhere', minWidth: 0 }}>{otherPersonName}</p>
           <button onClick={onClose} style={{ background: 'transparent', color: 'var(--slate)', padding: '2px 8px' }}>✕</button>
         </div>
 
-        <div style={{ flex: 1, overflowY: 'auto', padding: '16px' }}>
+        <div className="chat-messages" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '16px', overscrollBehavior: 'contain' }}>
           {loading && <p className="meta">Loading messages...</p>}
           {!loading && messages.length === 0 && <p className="meta">No messages yet. Say hello!</p>}
 
@@ -109,6 +121,8 @@ function MessageThread({ bookingId, otherPersonName, onClose }) {
               <div key={msg._id} style={{ display: 'flex', justifyContent: isMine ? 'flex-end' : 'flex-start', marginBottom: '10px' }}>
                 <div style={{
                   maxWidth: '75%',
+                  overflowWrap: 'anywhere',
+                  whiteSpace: 'pre-wrap',
                   background: isMine ? 'var(--primary)' : 'var(--bg)',
                   color: isMine ? 'white' : 'var(--navy)',
                   padding: '8px 12px',
@@ -124,14 +138,15 @@ function MessageThread({ bookingId, otherPersonName, onClose }) {
         </div>
 
         {error && <p role="alert" style={{ color: 'var(--danger)', margin: '0 12px 8px' }}>{error}</p>}
-        <form onSubmit={sendMessage} style={{ display: 'flex', gap: '8px', padding: '12px', borderTop: '1px solid var(--border)' }}>
+        <form className="chat-composer" onSubmit={sendMessage} style={{ display: 'flex', gap: '8px', padding: '12px', borderTop: '1px solid var(--border)' }}>
           <input
             type="text"
             placeholder="Type a message..."
+            aria-label="Message"
             value={text}
             disabled={sending}
             onChange={(e) => setText(e.target.value)}
-            style={{ margin: 0 }}
+            style={{ margin: 0, minWidth: 0, flex: 1 }}
           />
           <button type="submit" disabled={sending || !text.trim()} style={{ flexShrink: 0 }}>{sending ? 'Sending...' : 'Send'}</button>
         </form>
