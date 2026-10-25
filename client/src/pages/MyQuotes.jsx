@@ -116,7 +116,7 @@ function MyQuotes() {
           <p className="quote-card-note">
           {quote.status === 'pending' && 'Awaiting the customer’s decision'}
           {quote.status === 'withdrawn' && 'You withdrew this quote. It can no longer be accepted.'}
-          {quote.status === 'declined' && 'The customer declined or selected another provider.'}
+          {quote.status === 'declined' && (quote.job?.status === 'deleted' ? 'The customer removed this job listing.' : 'The customer declined or selected another provider.')}
           {quote.status === 'accepted' && 'Your offer was accepted. You’re ready for the next step.'}
           </p>
           {quote.status === 'pending' && <button type="button" className="quote-withdraw-btn"

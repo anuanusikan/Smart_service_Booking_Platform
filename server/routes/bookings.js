@@ -45,6 +45,11 @@ router.post('/', authMiddleware, async (req, res) => {
 
     await newBooking.save();
 
+    if (await Job.exists({ _id: jobId, status: 'deleted' })) {
+      await Booking.updateOne({ _id: newBooking._id, status: 'pending' }, { status: 'declined' });
+      return res.status(409).json({ message: 'This job was removed by the customer.' });
+    }
+
     try {
       await Notification.create({
         recipient: job.postedBy,

@@ -45,6 +45,12 @@ router.post('/', authMiddleware, async (req, res) => {
 
     await quote.save();
 
+    // Deletion may have closed the job after the initial availability check.
+    if (await Job.exists({ _id: jobId, status: 'deleted' })) {
+      await Quote.updateOne({ _id: quote._id, status: 'pending' }, { status: 'declined' });
+      return res.status(409).json({ message: 'This job was removed by the customer.' });
+    }
+
     try {
       await Notification.create({
         recipient: job.postedBy,

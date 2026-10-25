@@ -4,6 +4,8 @@ const { storage } = require('../config/cloudinary');
 const upload = multer({ storage });
 const express = require('express');
 const Job = require('../models/Job');
+const Quote = require('../models/Quote');
+const Booking = require('../models/Booking');
 const { validateJobInput } = require('../services/jobValidation');
 const { parseAppointment } = require('../services/appointments');
 const authMiddleware = require('../middleware/auth');
@@ -117,7 +119,7 @@ router.get('/mine', authMiddleware, async (req, res) => {
       return res.status(403).json({ message: 'Only customers can view their posted jobs' });
     }
 
-    const jobs = await Job.find({ postedBy: req.user.id }).sort({ createdAt: -1 });
+    const jobs = await Job.find({ postedBy: req.user.id, status: { $ne: 'deleted' } }).sort({ createdAt: -1 });
     res.json(jobs);
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
@@ -169,11 +171,22 @@ router.delete('/:id', authMiddleware, async (req, res) => {
       return res.status(403).json({ message: 'Not authorized to delete this job' });
     }
 
-    if (job.status !== 'open') {
+    if (!['open', 'deleted'].includes(job.status)) {
       return res.status(400).json({ message: 'Only open jobs can be deleted' });
     }
 
-    await Job.findByIdAndDelete(req.params.id);
+    // Compete with acceptance for the open job, while preserving historical
+    // references and prices. A retry can finish cleanup after a partial failure.
+    const deleted = await Job.findOneAndUpdate(
+      { _id: req.params.id, postedBy: req.user.id, status: { $in: ['open', 'deleted'] } },
+      { status: 'deleted' },
+      { new: true }
+    );
+    if (!deleted) {
+      return res.status(409).json({ message: 'This job has already changed. Please refresh.' });
+    }
+    await Quote.updateMany({ job: job._id, status: 'pending' }, { status: 'declined' });
+    await Booking.updateMany({ job: job._id, status: 'pending' }, { status: 'declined' });
     res.json({ message: 'Job deleted successfully' });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
