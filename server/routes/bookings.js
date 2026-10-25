@@ -141,7 +141,10 @@ router.put('/:id', authMiddleware, async (req, res) => {
           { status: 'accepted', agreedPrice: booking.job.budget },
           { new: true }
         );
-        if (!updated) throw new Error('This booking is no longer pending');
+        if (!updated) {
+          await Job.updateOne({ _id: booking.job._id, status: 'assigned' }, { status: 'open' });
+          return res.status(409).json({ message: 'This booking has already changed. Please refresh.' });
+        }
       } catch (err) {
         await Job.updateOne({ _id: booking.job._id, status: 'assigned' }, { status: 'open' });
         throw err;
@@ -203,7 +206,16 @@ router.delete('/:id/cancel', authMiddleware, async (req, res) => {
       return res.status(400).json({ message: 'Only pending requests can be cancelled' });
     }
 
-    await Booking.findByIdAndDelete(req.params.id);
+    // Recheck ownership and status in the delete itself: acceptance may have
+    // changed the booking since the initial read.
+    const cancelled = await Booking.findOneAndDelete({
+      _id: req.params.id,
+      provider: req.user.id,
+      status: 'pending'
+    });
+    if (!cancelled) {
+      return res.status(409).json({ message: 'This booking has already changed. Please refresh.' });
+    }
     res.json({ message: 'Request cancelled' });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });

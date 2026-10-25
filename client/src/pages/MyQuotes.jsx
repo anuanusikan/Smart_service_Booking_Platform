@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import ProviderPortalLayout from '../components/ProviderPortalLayout';
 import { quotesApi } from '../services/api';
@@ -9,6 +9,34 @@ function MyQuotes() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [refresh, setRefresh] = useState(0);
+  const [withdrawing, setWithdrawing] = useState(null);
+  const withdrawingRef = useRef(false);
+  const quotesVersion = useRef(0);
+  const [notice, setNotice] = useState('');
+
+  const withdrawQuote = async id => {
+    if (withdrawingRef.current) return;
+    if (!window.confirm('Withdraw this quote? The customer will no longer be able to accept it.')) return;
+    withdrawingRef.current = true;
+    quotesVersion.current += 1;
+    setWithdrawing(id);
+    setNotice('');
+    setError('');
+    try {
+      const result = await quotesApi.withdraw(id);
+      quotesVersion.current += 1;
+      if (result.ok) {
+        setQuotes(current => current.map(quote => quote._id === id ? { ...quote, status: 'withdrawn' } : quote));
+        setNotice('Quote withdrawn successfully.');
+      } else {
+        setNotice(result.data?.message || 'Could not withdraw quote. Please try again.');
+        setRefresh(value => value + 1);
+      }
+    } finally {
+      withdrawingRef.current = false;
+      setWithdrawing(null);
+    }
+  };
   let user = null;
   try {
     user = JSON.parse(sessionStorage.getItem('user') || 'null');
@@ -21,9 +49,14 @@ function MyQuotes() {
     let active = true;
     setLoading(true);
     setError('');
+    let latestRequest = 0;
     const load = async () => {
+      if (withdrawingRef.current) return;
+      const version = quotesVersion.current;
+      const request = ++latestRequest;
       const data = await quotesApi.getMine();
-      if (!active) return;
+      // A poll started before withdrawal must not restore the pending card.
+      if (!active || withdrawingRef.current || version !== quotesVersion.current || request !== latestRequest) return;
       if (Array.isArray(data)) {
         setQuotes(data);
         setError('');
@@ -42,40 +75,60 @@ function MyQuotes() {
 
   if (!hasToken) return <p style={{ padding: 32 }}>Please <Link to="/login">log in</Link> to view your quotes.</p>;
   if (!isProvider) return <p style={{ padding: 32 }}>My Quotes is available to service providers.</p>;
-  const visible = quotes.filter(quote => filter === 'all' || quote.status === filter);
+  const matchesFilter = (quote, status) => status === 'all' ? quote.status !== 'withdrawn' : quote.status === status;
+  const visible = quotes.filter(quote => matchesFilter(quote, filter));
 
   return (
     <ProviderPortalLayout title="My Quotes" subtitle="Track the prices you offered and the customer's decision."
       extraAction={<button type="button" onClick={() => setRefresh(value => value + 1)} disabled={loading}>Refresh</button>}>
-      <div className="tab-nav-bar" style={{ display: 'flex', flexWrap: 'wrap' }} aria-label="Filter quotes">
-        {['all', 'pending', 'accepted', 'declined'].map(status => (
+      <section className="quotes-page" aria-label="Your submitted quotes">
+      <div className="quotes-filter-bar" aria-label="Filter quotes">
+        {['all', 'pending', 'accepted', 'declined', 'withdrawn'].map(status => (
           <button key={status} type="button" className={`tab-btn${filter === status ? ' active' : ''}`}
             aria-pressed={filter === status} onClick={() => setFilter(status)}>
-            {status.charAt(0).toUpperCase() + status.slice(1)} ({quotes.filter(quote => status === 'all' || quote.status === status).length})
+            {status.charAt(0).toUpperCase() + status.slice(1)} <span className="quotes-filter-count">{quotes.filter(quote => matchesFilter(quote, status)).length}</span>
           </button>
         ))}
       </div>
       {error && <p role="alert" style={{ color: 'var(--danger)' }}>{error}</p>}
+      {notice && <p role="status">{notice}</p>}
       {loading && <p>Loading your quotes...</p>}
       {!loading && !error && visible.length === 0 && <div className="card">
         <p>No {filter === 'all' ? '' : `${filter} `}quotes yet.</p>
         <Link to="/jobs">Browse matched jobs</Link>
       </div>}
+      <div className="quotes-list">
       {!loading && visible.map(quote => (
-        <article key={quote._id} className="card">
-          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-            <h3 style={{ marginBottom: 8 }}>{quote.job?.title || 'Job no longer available'}</h3>
+        <article key={quote._id} className="quote-card">
+          <div className="quote-card-details">
+          <div className="quote-card-heading">
+            <h3>{quote.job?.title || 'Job no longer available'}</h3>
             <span className={`status-badge status-${quote.status}`}>{quote.status}</span>
           </div>
-          <p><b>Your quote:</b> Rs. {Number(quote.price).toLocaleString()}</p>
-          {quote.job?.location && <p className="meta">Location: {quote.job.location}</p>}
-          <p className="meta">Submitted: {new Date(quote.createdAt).toLocaleDateString()}</p>
-          {quote.message && <p style={{ overflowWrap: 'anywhere' }}>{quote.message}</p>}
-          {quote.status === 'pending' && <p className="meta">Waiting for the customer's decision.</p>}
-          {quote.status === 'declined' && <p className="meta">The customer declined this quote or selected another provider.</p>}
-          {quote.status === 'accepted' && <Link to="/my-bookings">View your booking</Link>}
+          <div className="quote-card-meta">
+          {quote.job?.location && <span><span className="quote-meta-label">Location</span> {quote.job.location}</span>}
+          <span><span className="quote-meta-label">Submitted</span> {new Date(quote.createdAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+          </div>
+          {quote.message && <p className="quote-card-message">{quote.message}</p>}
+          </div>
+          <div className="quote-card-price"><span>Your offer</span><strong><small>Rs.</small> {Number(quote.price).toLocaleString()}</strong></div>
+          <div className="quote-card-footer">
+          <p className="quote-card-note">
+          {quote.status === 'pending' && 'Awaiting the customer’s decision'}
+          {quote.status === 'withdrawn' && 'You withdrew this quote. It can no longer be accepted.'}
+          {quote.status === 'declined' && 'The customer declined or selected another provider.'}
+          {quote.status === 'accepted' && 'Your offer was accepted. You’re ready for the next step.'}
+          </p>
+          {quote.status === 'pending' && <button type="button" className="quote-withdraw-btn"
+            disabled={withdrawing !== null} onClick={() => withdrawQuote(quote._id)}>
+            {withdrawing === quote._id ? 'Withdrawing...' : 'Withdraw Quote'}
+          </button>}
+          {quote.status === 'accepted' && <Link className="quote-booking-link" to="/my-bookings">View booking <span aria-hidden="true">↗</span></Link>}
+          </div>
         </article>
       ))}
+      </div>
+      </section>
     </ProviderPortalLayout>
   );
 }

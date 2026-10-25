@@ -27,7 +27,7 @@ const quoteSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['pending', 'accepted', 'declined'],
+    enum: ['pending', 'accepted', 'declined', 'withdrawn'],
     default: 'pending'
   }
 }, { timestamps: true });

@@ -3,8 +3,8 @@
   Model.updateMany = jest.fn();
   return Model;
 });
-jest.mock('../models/Quote', () => ({ findById: jest.fn() }));
-jest.mock('../models/Job', () => ({ findOneAndUpdate: jest.fn() }));
+jest.mock('../models/Quote', () => ({ findById: jest.fn(), findOneAndUpdate: jest.fn(), updateOne: jest.fn() }));
+jest.mock('../models/Job', () => ({ findOneAndUpdate: jest.fn(), updateOne: jest.fn() }));
 jest.mock('../models/Notification', () => ({ create: jest.fn() }));
 jest.mock('../services/quoteNotifications', () => ({ declinePendingQuotes: jest.fn(), notifyQuoteDeclined: jest.fn() }));
 const Booking = require('../models/Booking');
@@ -21,6 +21,7 @@ test.each(['abc', 'Infinity', Infinity, NaN, '', '   ', 0, -1, true, [], {}, nul
   expect(res.json).toHaveBeenCalledWith({ message: 'Please enter a valid price greater than Rs. 0' });
 });
 test('accepting a quote saves its price rather than the advertised budget', async () => {
+  Quote.findOneAndUpdate.mockResolvedValue({ status: 'accepted' });
   Quote.findById.mockResolvedValue({ _id: 'q1', job: 'j1', provider: 'p1', customer: 'c1', price: 7000, status: 'pending', save: jest.fn() });
   Job.findOneAndUpdate.mockResolvedValue({ _id: 'j1', title: 'Test', budget: 5000 });
   const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };

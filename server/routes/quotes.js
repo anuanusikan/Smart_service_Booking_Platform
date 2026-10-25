@@ -118,6 +118,23 @@ router.put('/:id/accept', authMiddleware, async (req, res) => {
       return res.status(409).json({ message: 'This job is no longer open' });
     }
 
+    // Acceptance and withdrawal must compete for the same pending quote.
+    let accepted;
+    try {
+      accepted = await Quote.findOneAndUpdate(
+        { _id: quote._id, status: 'pending' },
+        { status: 'accepted' },
+        { new: true }
+      );
+    } catch (err) {
+      await Job.updateOne({ _id: quote.job, status: 'assigned' }, { status: 'open' });
+      throw err;
+    }
+    if (!accepted) {
+      await Job.updateOne({ _id: quote.job, status: 'assigned' }, { status: 'open' });
+      return res.status(409).json({ message: 'This quote has already changed. Please refresh.' });
+    }
+
     const booking = new Booking({
       job: quote.job,
       provider: quote.provider,
@@ -128,11 +145,10 @@ router.put('/:id/accept', authMiddleware, async (req, res) => {
     try {
       await booking.save();
     } catch (err) {
+      await Quote.updateOne({ _id: quote._id, status: 'accepted' }, { status: 'pending' });
       await Job.updateOne({ _id: quote.job, status: 'assigned' }, { status: 'open' });
       throw err;
     }
-    quote.status = 'accepted';
-    await quote.save();
     await declinePendingQuotes(
       { job: quote.job, _id: { $ne: quote._id } }, req.user.id, job.title
     );
@@ -155,6 +171,31 @@ router.put('/:id/accept', authMiddleware, async (req, res) => {
     }
 
     res.json({ message: 'Quote accepted, booking created', booking });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
+// PROVIDER withdraws their own quote before it is accepted or declined.
+router.put('/:id/withdraw', authMiddleware, async (req, res) => {
+  try {
+    if (req.user.role !== 'provider') {
+      return res.status(403).json({ message: 'Only providers can withdraw quotes' });
+    }
+    const quote = await Quote.findById(req.params.id);
+    if (!quote) return res.status(404).json({ message: 'Quote not found' });
+    if (quote.provider.toString() !== req.user.id) {
+      return res.status(403).json({ message: 'Not authorized to withdraw this quote' });
+    }
+    const withdrawn = await Quote.findOneAndUpdate(
+      { _id: quote._id, provider: req.user.id, status: 'pending' },
+      { status: 'withdrawn' },
+      { new: true }
+    );
+    if (!withdrawn) {
+      return res.status(409).json({ message: 'Only pending quotes can be withdrawn. Please refresh.' });
+    }
+    res.json({ message: 'Quote withdrawn', quote: withdrawn });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }

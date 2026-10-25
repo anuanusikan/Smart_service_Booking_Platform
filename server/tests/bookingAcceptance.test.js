@@ -1,4 +1,4 @@
-jest.mock('../models/Booking', () => ({ find: jest.fn(), findById: jest.fn(), findOneAndUpdate: jest.fn(), updateMany: jest.fn() }));
+jest.mock('../models/Booking', () => ({ find: jest.fn(), findById: jest.fn(), findOneAndDelete: jest.fn(), findOneAndUpdate: jest.fn(), updateMany: jest.fn() }));
 jest.mock('../models/Job', () => ({ findOneAndUpdate: jest.fn(), findByIdAndUpdate: jest.fn(), updateOne: jest.fn() }));
 jest.mock('../models/Quote', () => ({ findById: jest.fn(), find: jest.fn(), findOneAndUpdate: jest.fn(), updateMany: jest.fn() }));
 jest.mock('../models/Notification', () => ({ create: jest.fn() }));
@@ -9,6 +9,7 @@ const bookingRouter = require('../routes/bookings');
 const quoteRouter = require('../routes/quotes');
 const bookingHandler = bookingRouter.stack.find(layer => layer.route?.path === '/:id' && layer.route.methods.put).route.stack.at(-1).handle;
 const quoteHandler = quoteRouter.stack.find(layer => layer.route?.path === '/:id/accept').route.stack.at(-1).handle;
+const cancelHandler = bookingRouter.stack.find(layer => layer.route?.path === '/:id/cancel').route.stack.at(-1).handle;
 function response() {
   const res = { status: jest.fn(), json: jest.fn() };
   res.status.mockReturnValue(res);
@@ -20,6 +21,56 @@ function booking(status = 'pending') {
 beforeEach(() => {
   jest.resetAllMocks();
   Quote.find.mockResolvedValue([]);
+});
+
+test('provider can cancel their own pending request', async () => {
+  Booking.findById.mockResolvedValue(booking());
+  Booking.findOneAndDelete.mockResolvedValue(booking());
+  const res = response();
+  await cancelHandler({ params: { id: 'booking1' }, user: { id: 'provider1' } }, res);
+  expect(Booking.findOneAndDelete).toHaveBeenCalledWith({ _id: 'booking1', provider: 'provider1', status: 'pending' });
+  expect(res.json).toHaveBeenCalledWith({ message: 'Request cancelled' });
+});
+
+test('cancellation preserves a booking accepted after the initial read', async () => {
+  const current = booking();
+  Booking.findById.mockImplementation(async () => ({ ...current }));
+  Booking.findOneAndDelete.mockImplementation(async filter => {
+    current.status = 'accepted';
+    return current.status === filter.status ? current : null;
+  });
+  const res = response();
+  await cancelHandler({ params: { id: 'booking1' }, user: { id: 'provider1' } }, res);
+  expect(res.status).toHaveBeenCalledWith(409);
+  expect(current.status).toBe('accepted');
+  expect(res.json).not.toHaveBeenCalledWith({ message: 'Request cancelled' });
+});
+
+test.each(['accepted', 'completed', 'declined'])('cannot cancel a %s booking', async status => {
+  Booking.findById.mockResolvedValue(booking(status));
+  const res = response();
+  await cancelHandler({ params: { id: 'booking1' }, user: { id: 'provider1' } }, res);
+  expect(res.status).toHaveBeenCalledWith(400);
+  expect(Booking.findOneAndDelete).not.toHaveBeenCalled();
+});
+
+test('another provider cannot cancel the request', async () => {
+  Booking.findById.mockResolvedValue(booking());
+  const res = response();
+  await cancelHandler({ params: { id: 'booking1' }, user: { id: 'provider2' } }, res);
+  expect(res.status).toHaveBeenCalledWith(403);
+  expect(Booking.findOneAndDelete).not.toHaveBeenCalled();
+});
+
+test('acceptance releases the job if cancellation deleted the pending booking first', async () => {
+  Booking.findById.mockReturnValue({ populate: async () => booking() });
+  Job.findOneAndUpdate.mockResolvedValue({ _id: 'job1' });
+  Booking.findOneAndUpdate.mockResolvedValue(null);
+  const res = response();
+  await bookingHandler({ params: { id: 'booking1' }, user: { id: 'customer1' }, body: { status: 'accepted' } }, res);
+  expect(Job.updateOne).toHaveBeenCalledWith({ _id: 'job1', status: 'assigned' }, { status: 'open' });
+  expect(Booking.updateMany).not.toHaveBeenCalled();
+  expect(res.status).toHaveBeenCalledWith(409);
 });
 test.each(['declined', 'completed', 'accepted'])('cannot accept a %s booking', async status => {
   Booking.findById.mockReturnValue({ populate: async () => booking(status) });

@@ -237,7 +237,10 @@ export const quotesApi = {
     apiPut(`/quotes/${quoteId}/accept`, {}, true),
 
   decline: (quoteId) =>
-    apiPut(`/quotes/${quoteId}/decline`, {}, true)
+    apiPut(`/quotes/${quoteId}/decline`, {}, true),
+
+  withdraw: (quoteId) =>
+    apiPut(`/quotes/${quoteId}/withdraw`, {}, true)
 };
 
 // -------------------------------------------------------------
