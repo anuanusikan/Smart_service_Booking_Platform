@@ -25,7 +25,7 @@ function Navbar({ onProfileClick, user, onOpenChat }) {
   const seenMessages = useRef(null);
 
   const userId = user?.id || user?._id;
-  const [settings, updateSetting] = useNotificationSettings(userId);
+  const [settings, updateSetting, settingsSyncStatus] = useNotificationSettings(userId);
   const visibleNotifications = notifications.filter(item => notificationEnabled(item, settings));
   const unreadNotifs = totalUnread;
   const notificationTypes = ['system', ...(settings.bookingAlerts ? ['booking_request', 'booking_status'] : []),
@@ -301,6 +301,7 @@ function Navbar({ onProfileClick, user, onOpenChat }) {
                       <label className="switch-label" htmlFor="message-sound">Message sound</label>
                       <input id="message-sound" type="checkbox" className="switch-input" checked={settings.messageSound} onChange={() => updateSetting('messageSound')} />
                     </div>
+                    <p role="status" style={{ padding: '0 16px', fontSize: 11 }}>{settingsSyncStatus}</p>
                     {loadingChats && <p style={{ padding: '16px', margin: 0, fontSize: '13px', color: 'var(--slate)' }}>Loading chats...</p>}
                     {!loadingChats && conversations.length === 0 && (
                       <div style={{ padding: '24px 16px', textAlign: 'center' }}>
@@ -550,7 +551,7 @@ function Navbar({ onProfileClick, user, onOpenChat }) {
 
                       <div style={{ padding: '12px 16px', background: '#F9FAFB', textAlign: 'center' }}>
                         <span style={{ fontSize: '11px', color: 'var(--slate)' }}>
-                          ✓ Preferences saved automatically
+                          {settingsSyncStatus}
                         </span>
                       </div>
                     </div>

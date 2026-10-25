@@ -20,7 +20,7 @@ function Profile({ onClose, onProfileUpdate }) {
     const user = JSON.parse(sessionStorage.getItem('user') || 'null');
     userId = user?.id || user?._id;
   } catch { /* Preferences fall back to defaults. */ }
-  const [notifSettings, toggleNotifSetting] = useNotificationSettings(userId);
+  const [notifSettings, toggleNotifSetting, settingsSyncStatus] = useNotificationSettings(userId);
 
   const fetchProfile = async () => {
     try {
@@ -309,6 +309,7 @@ function Profile({ onClose, onProfileUpdate }) {
         {!loading && profile && activeTab === 'settings' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             <p className="eyebrow" style={{ margin: '0 0 6px' }}>Notification Alerts</p>
+            <p role="status" className="meta">{settingsSyncStatus}</p>
 
             <div className="setting-switch" style={{ background: 'var(--bg)', borderRadius: '8px' }}>
               <div>

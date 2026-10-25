@@ -3,6 +3,7 @@ const Review = require('../models/Review');
 const Booking = require('../models/Booking');
 const User = require('../models/User');
 const authMiddleware = require('../middleware/auth');
+const requireRole = require('../middleware/requireRole');
 
 const router = express.Router();
 
@@ -70,7 +71,7 @@ router.get('/provider/:providerId', async (req, res) => {
 });
 
 // GET list of booking IDs the logged-in customer has already reviewed
-router.get('/mine', authMiddleware, async (req, res) => {
+router.get('/mine', authMiddleware, requireRole('customer'), async (req, res) => {
   try {
     const reviews = await Review.find({ customer: req.user.id }).select('booking');
     const reviewedBookingIds = reviews.map(r => r.booking.toString());

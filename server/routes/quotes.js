@@ -3,6 +3,7 @@ const Quote = require('../models/Quote');
 const Job = require('../models/Job');
 const Notification = require('../models/Notification');
 const authMiddleware = require('../middleware/auth');
+const requireRole = require('../middleware/requireRole');
 const { notifyQuoteDeclined } = require('../services/quoteNotifications');
 const { acceptQuote } = require('../services/acceptQuote');
 
@@ -71,7 +72,7 @@ router.post('/', authMiddleware, async (req, res) => {
 });
 
 // GET quotes for a specific job (only the job's owner can view)
-router.get('/job/:jobId', authMiddleware, async (req, res) => {
+router.get('/job/:jobId', authMiddleware, requireRole('customer'), async (req, res) => {
   try {
     const job = await Job.findById(req.params.jobId);
     if (!job) return res.status(404).json({ message: 'Job not found' });
@@ -91,7 +92,7 @@ router.get('/job/:jobId', authMiddleware, async (req, res) => {
 });
 
 // GET quotes I've submitted (provider view)
-router.get('/mine', authMiddleware, async (req, res) => {
+router.get('/mine', authMiddleware, requireRole('provider'), async (req, res) => {
   try {
     const quotes = await Quote.find({ provider: req.user.id })
       .populate('job')
@@ -103,7 +104,7 @@ router.get('/mine', authMiddleware, async (req, res) => {
 });
 
 // CUSTOMER accepts a quote — creates a real Booking, declines the rest
-router.put('/:id/accept', authMiddleware, async (req, res) => {
+router.put('/:id/accept', authMiddleware, requireRole('customer'), async (req, res) => {
   try {
     const booking = await acceptQuote(req.params.id, req.user.id);
     res.json({ message: 'Quote accepted, booking created', booking });
@@ -138,7 +139,7 @@ router.put('/:id/withdraw', authMiddleware, async (req, res) => {
 });
 
 // CUSTOMER declines a specific quote
-router.put('/:id/decline', authMiddleware, async (req, res) => {
+router.put('/:id/decline', authMiddleware, requireRole('customer'), async (req, res) => {
   try {
     const quote = await Quote.findById(req.params.id);
     if (!quote) return res.status(404).json({ message: 'Quote not found' });

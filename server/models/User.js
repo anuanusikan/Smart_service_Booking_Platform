@@ -39,6 +39,13 @@ const userSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
+  notificationSettings: {
+    type: new mongoose.Schema({
+      bookingAlerts: Boolean, messageAlerts: Boolean, quoteAlerts: Boolean,
+      sound: Boolean, messageSound: Boolean
+    }, { _id: false }),
+    default: undefined
+  },
   profilePicture: {
     type: String,
     default: ''

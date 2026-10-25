@@ -18,6 +18,7 @@ import ProviderEarnings from './pages/ProviderEarnings';
 import ProviderSchedule from './pages/ProviderSchedule';
 import MessageThread from './pages/MessageThread';
 import { authApi } from './services/api';
+import { routeRedirect } from './utils/routeAccess';
 
 function App() {
   const [showProfile, setShowProfile] = useState(false);
@@ -84,7 +85,10 @@ function App() {
     };
   }, []);
 
-  const requireLogin = (page) => user ? page : <Navigate to="/login" replace />;
+  const requireLogin = (page, role) => {
+    const redirect = routeRedirect(user, role);
+    return redirect ? <Navigate to={redirect} replace /> : page;
+  };
 
   return (
     <>
@@ -98,17 +102,17 @@ function App() {
         <Route path="/" element={<Home />} />
         <Route path="/register" element={<Register />} />
         <Route path="/login" element={<Login onLoginSuccess={refreshUser} />} />
-        <Route path="/post-job" element={requireLogin(<PostJob />)} />
+        <Route path="/post-job" element={requireLogin(<PostJob />, 'customer')} />
         <Route path="/jobs" element={<BrowseJobs />} />
         <Route path="/my-bookings" element={requireLogin(<MyBookings />)} />
-        <Route path="/my-quotes" element={requireLogin(<MyQuotes />)} />
-        <Route path="/my-jobs" element={requireLogin(<MyJobs />)} />
-        <Route path="/my-reviews" element={requireLogin(<MyReviews />)} />
+        <Route path="/my-quotes" element={requireLogin(<MyQuotes />, 'provider')} />
+        <Route path="/my-jobs" element={requireLogin(<MyJobs />, 'customer')} />
+        <Route path="/my-reviews" element={requireLogin(<MyReviews />, 'provider')} />
         <Route path="/provider/:id" element={<ProviderProfile />} />
-        <Route path="/dashboard" element={requireLogin(<CustomerDashboard />)} />
-        <Route path="/provider-dashboard" element={requireLogin(<ProviderDashboard />)} />
-        <Route path="/provider-earnings" element={requireLogin(<ProviderEarnings />)} />
-        <Route path="/provider-schedule" element={requireLogin(<ProviderSchedule />)} />
+        <Route path="/dashboard" element={requireLogin(<CustomerDashboard />, 'customer')} />
+        <Route path="/provider-dashboard" element={requireLogin(<ProviderDashboard />, 'provider')} />
+        <Route path="/provider-earnings" element={requireLogin(<ProviderEarnings />, 'provider')} />
+        <Route path="/provider-schedule" element={requireLogin(<ProviderSchedule />, 'provider')} />
       </Routes>
 
       {/* Global Profile Modal */}

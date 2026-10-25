@@ -7,6 +7,7 @@ const multer = require('multer');
 const { storage: profileStorage } = require('../config/cloudinaryProfile');
 const uploadProfilePic = multer({ storage: profileStorage });
 const authMiddleware = require('../middleware/auth');
+const { DEFAULT_SETTINGS } = require('../services/notificationSettings');
 
 const router = express.Router();
 
@@ -117,6 +118,39 @@ router.get('/me', authMiddleware, async (req, res) => {
     res.json(user);
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
+router.get('/me/notification-settings', authMiddleware, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).select('notificationSettings');
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    const saved = user.notificationSettings?.toObject?.() || user.notificationSettings;
+    res.json({ settings: saved ? { ...DEFAULT_SETTINGS, ...saved } : null });
+  } catch {
+    res.status(500).json({ message: 'Could not load preferences' });
+  }
+});
+
+router.put('/me/notification-settings', authMiddleware, async (req, res) => {
+  try {
+    const { settings, initialize = false } = req.body || {};
+    if (!settings || typeof settings !== 'object' || Array.isArray(settings) || typeof initialize !== 'boolean' ||
+      Object.keys(settings).length === 0 || Object.entries(settings).some(([key, value]) => !Object.hasOwn(DEFAULT_SETTINGS, key) || typeof value !== 'boolean')) {
+      return res.status(400).json({ message: 'Invalid notification preferences' });
+    }
+    const filter = { _id: req.user.id };
+    if (initialize) filter.notificationSettings = { $exists: false };
+    const update = initialize ? { notificationSettings: { ...DEFAULT_SETTINGS, ...settings } } :
+      Object.fromEntries(Object.entries(settings).map(([key, value]) => [`notificationSettings.${key}`, value]));
+    let user = await User.findOneAndUpdate(filter, { $set: update }, { new: true, runValidators: true });
+    // Another device may have initialized preferences first. Keep that winner.
+    if (!user && initialize) user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    const saved = user.notificationSettings?.toObject?.() || user.notificationSettings || {};
+    res.json({ settings: { ...DEFAULT_SETTINGS, ...saved } });
+  } catch {
+    res.status(500).json({ message: 'Could not save preferences. Please try again.' });
   }
 });
 

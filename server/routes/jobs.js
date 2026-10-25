@@ -9,11 +9,12 @@ const Booking = require('../models/Booking');
 const { validateJobInput } = require('../services/jobValidation');
 const { parseAppointment } = require('../services/appointments');
 const authMiddleware = require('../middleware/auth');
+const requireRole = require('../middleware/requireRole');
 
 const router = express.Router();
 
 // CREATE a job (protected — must be logged in)
-router.post('/', authMiddleware, upload.array('images', 3), async (req, res) => {
+router.post('/', authMiddleware, requireRole('customer'), upload.array('images', 3), async (req, res) => {
   try {
     if (req.user.role !== 'customer') {
       return res.status(403).json({ message: 'Only customers can post jobs' });
@@ -127,7 +128,7 @@ router.get('/mine', authMiddleware, async (req, res) => {
 });
 
 // UPDATE a job (only the customer who posted it, and only if still open)
-router.put('/:id', authMiddleware, async (req, res) => {
+router.put('/:id', authMiddleware, requireRole('customer'), async (req, res) => {
   try {
     const job = await Job.findById(req.params.id);
     if (!job) {
@@ -160,7 +161,7 @@ router.put('/:id', authMiddleware, async (req, res) => {
 });
 
 // DELETE a job (only the customer who posted it, and only if still open)
-router.delete('/:id', authMiddleware, async (req, res) => {
+router.delete('/:id', authMiddleware, requireRole('customer'), async (req, res) => {
   try {
     const job = await Job.findById(req.params.id);
     if (!job) {

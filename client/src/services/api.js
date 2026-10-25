@@ -186,6 +186,9 @@ export const authApi = {
   updateProfile: (formData) =>
     apiUpload('/auth/me', formData, 'PUT'),
 
+  getNotificationSettings: () => apiGet('/auth/me/notification-settings', true),
+  saveNotificationSettings: (settings, initialize = false) => apiPut('/auth/me/notification-settings', { settings, initialize }, true),
+
   getProvider: (id) =>
     apiGet(`/auth/provider/${id}`)
 };

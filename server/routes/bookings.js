@@ -7,6 +7,7 @@ const Notification = require('../models/Notification');
 const Quote = require('../models/Quote');
 const { resolveBookingPrices } = require('../services/bookingPrices');
 const authMiddleware = require('../middleware/auth');
+const requireRole = require('../middleware/requireRole');
 
 const router = express.Router();
 
@@ -73,6 +74,9 @@ router.post('/', authMiddleware, async (req, res) => {
 // GET bookings for the logged-in user (as provider or customer)
 router.get('/mine', authMiddleware, async (req, res) => {
   try {
+    if (req.query.view === 'earnings' && req.user.role !== 'provider') {
+      return res.status(403).json({ message: 'Earnings are available to providers only' });
+    }
     const filter = req.user.role === 'provider'
       ? { provider: req.user.id }
       : { customer: req.user.id };
@@ -106,7 +110,7 @@ router.get('/mine', authMiddleware, async (req, res) => {
 });
 
 // CUSTOMER accepts or declines a booking
-router.put('/:id', authMiddleware, async (req, res) => {
+router.put('/:id', authMiddleware, requireRole('customer'), async (req, res) => {
   try {
     const { status } = req.body; // "accepted", "declined", or "completed"
 
@@ -194,7 +198,7 @@ router.put('/:id', authMiddleware, async (req, res) => {
 });
 
 // PROVIDER cancels their own pending request
-router.delete('/:id/cancel', authMiddleware, async (req, res) => {
+router.delete('/:id/cancel', authMiddleware, requireRole('provider'), async (req, res) => {
   try {
     const booking = await Booking.findById(req.params.id);
     if (!booking) {
