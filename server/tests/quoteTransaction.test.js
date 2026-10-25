@@ -5,6 +5,8 @@ jest.mock('../models/Booking', () => {
   const Model = jest.fn(function (data) { Object.assign(this, data); this.save = Model.save; });
   Model.save = jest.fn();
   Model.updateMany = jest.fn();
+  Model.find = jest.fn();
+  Model.findOneAndUpdate = jest.fn();
   return Model;
 });
 jest.mock('../models/Notification', () => ({ create: jest.fn() }));
@@ -29,6 +31,7 @@ beforeEach(() => {
   Job.findOneAndUpdate.mockResolvedValue({ title: 'Repair tap' });
   Quote.findOneAndUpdate.mockResolvedValue({ status: 'accepted' });
   Quote.find.mockResolvedValue([{ provider: 'p2' }]);
+  Booking.find.mockResolvedValue([]);
 });
 test('all reads, writes and notifications share the transaction session', async () => {
   const booking = await acceptQuote('q1', 'c1');
@@ -40,7 +43,7 @@ test('all reads, writes and notifications share the transaction session', async 
   expect(Booking.save).toHaveBeenCalledWith({ session });
   expect(Quote.find.mock.calls[0][2].session).toBe(session);
   expect(Quote.updateMany.mock.calls[0][2].session).toBe(session);
-  expect(Booking.updateMany.mock.calls[0][2].session).toBe(session);
+  expect(Booking.find.mock.calls[0][2].session).toBe(session);
   expect(Notification.create).toHaveBeenCalledWith([
     expect.objectContaining({ recipient: 'p1', title: 'Quote Accepted!' }),
     expect.objectContaining({ recipient: 'p2', title: 'Quote Declined' })
@@ -49,7 +52,7 @@ test('all reads, writes and notifications share the transaction session', async 
 test.each(['job', 'quote', 'booking', 'otherQuotes', 'otherBookings', 'notifications'])('failure saving %s rejects the whole transaction', async stage => {
   const operation = {
     job: Job.findOneAndUpdate, quote: Quote.findOneAndUpdate, booking: Booking.save,
-    otherQuotes: Quote.updateMany, otherBookings: Booking.updateMany, notifications: Notification.create
+    otherQuotes: Quote.updateMany, otherBookings: Booking.find, notifications: Notification.create
   }[stage];
   operation.mockRejectedValueOnce(new Error('Simulated database failure'));
   await expect(acceptQuote('q1', 'c1')).rejects.toThrow('Simulated database failure');

@@ -22,6 +22,7 @@ function booking(status = 'pending') {
 beforeEach(() => {
   jest.resetAllMocks();
   Quote.find.mockResolvedValue([]);
+  Booking.find.mockResolvedValue([]);
 });
 
 test('provider can cancel their own pending request', async () => {
@@ -96,7 +97,7 @@ test('competing acceptance requests can produce only one winner', async () => {
   expect(Booking.findOneAndUpdate).toHaveBeenCalledTimes(1);
   expect([first, second].filter(res => res.status.mock.calls.some(([code]) => code === 409))).toHaveLength(1);
   expect(Quote.find).toHaveBeenCalledWith({ job: 'job1', status: 'pending' });
-  expect(Booking.updateMany).toHaveBeenCalled();
+  expect(Booking.find).toHaveBeenCalledWith({ job: 'job1', _id: { $ne: 'booking1' }, status: 'pending' }, null, {});
 });
 test('failed booking acceptance releases the job claim', async () => {
   Booking.findById.mockReturnValue({ populate: async () => booking() });

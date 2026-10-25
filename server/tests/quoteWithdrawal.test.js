@@ -1,6 +1,8 @@
 jest.mock('../models/Booking', () => {
   const Model = jest.fn(function (data) { Object.assign(this, data); this.save = jest.fn().mockResolvedValue(this); });
   Model.updateMany = jest.fn();
+  Model.find = jest.fn().mockResolvedValue([]);
+  Model.findOneAndUpdate = jest.fn();
   return Model;
 });
 jest.mock('mongoose', () => ({ connection: { transaction: async callback => callback({}) } }));

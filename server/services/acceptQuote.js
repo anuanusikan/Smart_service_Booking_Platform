@@ -3,6 +3,7 @@ const Quote = require('../models/Quote');
 const Job = require('../models/Job');
 const Booking = require('../models/Booking');
 const Notification = require('../models/Notification');
+const { declinePendingBookings } = require('./bookingNotifications');
 
 function failure(status, message) {
   return Object.assign(new Error(message), { status });
@@ -32,10 +33,7 @@ async function acceptQuote(quoteId, customerId) {
     const others = { job: quote.job, _id: { $ne: quote._id }, status: 'pending' };
     const declinedQuotes = await Quote.find(others, null, { session });
     await Quote.updateMany(others, { status: 'declined' }, { session });
-    await Booking.updateMany(
-      { job: quote.job, _id: { $ne: booking._id }, status: 'pending' },
-      { status: 'declined' }, { session }
-    );
+    await declinePendingBookings({ job: quote.job, _id: { $ne: booking._id } }, customerId, job.title, session);
 
     await Notification.create([
       {
