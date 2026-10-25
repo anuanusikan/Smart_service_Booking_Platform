@@ -3,7 +3,8 @@
   Model.updateMany = jest.fn();
   return Model;
 });
-jest.mock('../models/Quote', () => ({ findById: jest.fn(), findOneAndUpdate: jest.fn(), updateOne: jest.fn() }));
+jest.mock('mongoose', () => ({ connection: { transaction: async callback => callback({}) } }));
+jest.mock('../models/Quote', () => ({ findById: jest.fn(), findOneAndUpdate: jest.fn(), updateOne: jest.fn(), find: jest.fn().mockResolvedValue([]), updateMany: jest.fn() }));
 jest.mock('../models/Job', () => ({ findOneAndUpdate: jest.fn(), updateOne: jest.fn() }));
 jest.mock('../models/Notification', () => ({ create: jest.fn() }));
 jest.mock('../services/quoteNotifications', () => ({ declinePendingQuotes: jest.fn(), notifyQuoteDeclined: jest.fn() }));

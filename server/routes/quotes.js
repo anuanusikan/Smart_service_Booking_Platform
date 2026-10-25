@@ -1,10 +1,10 @@
 const express = require('express');
 const Quote = require('../models/Quote');
 const Job = require('../models/Job');
-const Booking = require('../models/Booking');
 const Notification = require('../models/Notification');
 const authMiddleware = require('../middleware/auth');
-const { declinePendingQuotes, notifyQuoteDeclined } = require('../services/quoteNotifications');
+const { notifyQuoteDeclined } = require('../services/quoteNotifications');
+const { acceptQuote } = require('../services/acceptQuote');
 
 const router = express.Router();
 
@@ -105,80 +105,10 @@ router.get('/mine', authMiddleware, async (req, res) => {
 // CUSTOMER accepts a quote — creates a real Booking, declines the rest
 router.put('/:id/accept', authMiddleware, async (req, res) => {
   try {
-    const quote = await Quote.findById(req.params.id);
-    if (!quote) return res.status(404).json({ message: 'Quote not found' });
-
-    if (quote.customer.toString() !== req.user.id) {
-      return res.status(403).json({ message: 'Not authorized to accept this quote' });
-    }
-    if (quote.status !== 'pending') {
-      return res.status(400).json({ message: 'This quote is no longer pending' });
-    }
-
-    const job = await Job.findOneAndUpdate(
-      { _id: quote.job, status: 'open' },
-      { status: 'assigned' },
-      { new: true }
-    );
-    if (!job) {
-      return res.status(409).json({ message: 'This job is no longer open' });
-    }
-
-    // Acceptance and withdrawal must compete for the same pending quote.
-    let accepted;
-    try {
-      accepted = await Quote.findOneAndUpdate(
-        { _id: quote._id, status: 'pending' },
-        { status: 'accepted' },
-        { new: true }
-      );
-    } catch (err) {
-      await Job.updateOne({ _id: quote.job, status: 'assigned' }, { status: 'open' });
-      throw err;
-    }
-    if (!accepted) {
-      await Job.updateOne({ _id: quote.job, status: 'assigned' }, { status: 'open' });
-      return res.status(409).json({ message: 'This quote has already changed. Please refresh.' });
-    }
-
-    const booking = new Booking({
-      job: quote.job,
-      provider: quote.provider,
-      customer: quote.customer,
-      status: 'accepted',
-      agreedPrice: quote.price
-    });
-    try {
-      await booking.save();
-    } catch (err) {
-      await Quote.updateOne({ _id: quote._id, status: 'accepted' }, { status: 'pending' });
-      await Job.updateOne({ _id: quote.job, status: 'assigned' }, { status: 'open' });
-      throw err;
-    }
-    await declinePendingQuotes(
-      { job: quote.job, _id: { $ne: quote._id } }, req.user.id, job.title
-    );
-    await Booking.updateMany(
-      { job: quote.job, _id: { $ne: booking._id }, status: 'pending' },
-      { status: 'declined' }
-    );
-
-    try {
-      await Notification.create({
-        recipient: quote.provider,
-        sender: req.user.id,
-        type: 'quote_status',
-        title: 'Quote Accepted!',
-        message: `Your quote of Rs. ${quote.price} for "${job?.title || 'the job'}" was accepted!`,
-        link: '/my-bookings'
-      });
-    } catch (notifErr) {
-      console.error('Notification error:', notifErr);
-    }
-
+    const booking = await acceptQuote(req.params.id, req.user.id);
     res.json({ message: 'Quote accepted, booking created', booking });
   } catch (err) {
-    res.status(500).json({ message: 'Server error', error: err.message });
+    res.status(err.status || 500).json({ message: err.status ? err.message : 'Could not accept quote. No changes were saved. Please refresh and try again.' });
   }
 });
 

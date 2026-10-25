@@ -2,6 +2,7 @@ jest.mock('../models/Booking', () => ({ find: jest.fn(), findById: jest.fn(), fi
 jest.mock('../models/Job', () => ({ findOneAndUpdate: jest.fn(), findByIdAndUpdate: jest.fn(), updateOne: jest.fn() }));
 jest.mock('../models/Quote', () => ({ findById: jest.fn(), find: jest.fn(), findOneAndUpdate: jest.fn(), updateMany: jest.fn() }));
 jest.mock('../models/Notification', () => ({ create: jest.fn() }));
+jest.mock('mongoose', () => ({ connection: { transaction: async callback => callback({}) } }));
 const Booking = require('../models/Booking');
 const Job = require('../models/Job');
 const Quote = require('../models/Quote');
@@ -111,7 +112,7 @@ test('quote cannot assign a job already claimed through bookings', async () => {
   Job.findOneAndUpdate.mockResolvedValue(null);
   const res = response();
   await quoteHandler({ params: { id: 'quote1' }, user: { id: 'customer1' } }, res);
-  expect(Job.findOneAndUpdate).toHaveBeenCalledWith({ _id: 'job1', status: 'open' }, { status: 'assigned' }, { new: true });
+  expect(Job.findOneAndUpdate).toHaveBeenCalledWith({ _id: 'job1', status: 'open' }, { status: 'assigned' }, { new: true, session: expect.any(Object) });
   expect(res.status).toHaveBeenCalledWith(409);
 });
 

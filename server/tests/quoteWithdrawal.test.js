@@ -3,7 +3,8 @@ jest.mock('../models/Booking', () => {
   Model.updateMany = jest.fn();
   return Model;
 });
-jest.mock('../models/Quote', () => ({ findById: jest.fn(), findOneAndUpdate: jest.fn(), updateOne: jest.fn() }));
+jest.mock('mongoose', () => ({ connection: { transaction: async callback => callback({}) } }));
+jest.mock('../models/Quote', () => ({ findById: jest.fn(), findOneAndUpdate: jest.fn(), updateOne: jest.fn(), find: jest.fn().mockResolvedValue([]), updateMany: jest.fn() }));
 jest.mock('../models/Job', () => ({ findOneAndUpdate: jest.fn(), updateOne: jest.fn() }));
 jest.mock('../models/Notification', () => ({ create: jest.fn() }));
 jest.mock('../services/quoteNotifications', () => ({ declinePendingQuotes: jest.fn() }));
@@ -47,7 +48,7 @@ test.each(['accepted', 'declined', 'withdrawn'])('cannot withdraw a %s quote', a
   expect(res.status).toHaveBeenCalledWith(409);
   expect(current.status).toBe(status);
 });
-test('withdrawal wins after acceptance read: no booking is created and job is released', async () => {
+test('withdrawal wins after acceptance read: acceptance aborts without creating a booking', async () => {
   Job.findOneAndUpdate.mockImplementationOnce(async () => {
     await withdraw(request(), response());
     return { _id: 'j1' };
@@ -57,7 +58,7 @@ test('withdrawal wins after acceptance read: no booking is created and job is re
   expect(res.status).toHaveBeenCalledWith(409);
   expect(current.status).toBe('withdrawn');
   expect(Booking).not.toHaveBeenCalled();
-  expect(Job.updateOne).toHaveBeenCalledWith({ _id: 'j1', status: 'assigned' }, { status: 'open' });
+  expect(Job.updateOne).not.toHaveBeenCalled();
 });
 test('acceptance wins after withdrawal read: withdrawal cannot overwrite accepted status', async () => {
   Quote.findById.mockImplementationOnce(async () => {
