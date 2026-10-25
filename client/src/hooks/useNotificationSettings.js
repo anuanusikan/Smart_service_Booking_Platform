@@ -22,7 +22,7 @@ export default function useNotificationSettings(userId) {
     localStorage.setItem(settingsKey(userId), JSON.stringify(updated));
     setSettings(updated);
     window.dispatchEvent(new Event(SETTINGS_EVENT));
-    if (key === 'sound' && updated.sound) playNotificationSound();
+    if ((key === 'sound' || key === 'messageSound') && updated[key]) playNotificationSound();
   };
   return [settings, toggle];
 }

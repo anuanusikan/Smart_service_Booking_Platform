@@ -1,7 +1,6 @@
 const express = require('express');
 const Message = require('../models/Message');
 const Booking = require('../models/Booking');
-const Notification = require('../models/Notification');
 const authMiddleware = require('../middleware/auth');
 
 const router = express.Router();
@@ -24,13 +23,16 @@ router.get('/conversations/mine', authMiddleware, async (req, res) => {
           .populate('sender', 'name');
 
         const otherUser = b.customer._id.toString() === req.user.id ? b.provider : b.customer;
+        const unreadCount = await Message.countDocuments({ booking: b._id, sender: { $ne: req.user.id }, read: { $ne: true } });
 
         return {
           bookingId: b._id,
+          unreadCount,
           bookingStatus: b.status,
           job: b.job,
           otherUser,
           lastMessage: lastMsg ? {
+            _id: lastMsg._id,
             text: lastMsg.text,
             createdAt: lastMsg.createdAt,
             sender: lastMsg.sender
@@ -69,6 +71,11 @@ router.get('/:bookingId', authMiddleware, async (req, res) => {
       .populate('sender', 'name')
       .sort({ createdAt: 1 });
 
+    await Message.updateMany(
+      { _id: { $in: messages.map(message => message._id) }, sender: { $ne: req.user.id }, read: { $ne: true } },
+      { read: true }
+    );
+
     res.json(messages);
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
@@ -104,24 +111,6 @@ router.post('/:bookingId', authMiddleware, async (req, res) => {
 
     await message.save();
     await message.populate('sender', 'name');
-
-    // Create notification for recipient
-    const recipientId = booking.customer.toString() === req.user.id
-      ? booking.provider
-      : booking.customer;
-
-    try {
-      await Notification.create({
-        recipient: recipientId,
-        sender: req.user.id,
-        type: 'new_message',
-        title: `Message from ${message.sender?.name || 'User'}`,
-        message: text.trim().length > 60 ? `${text.trim().substring(0, 60)}...` : text.trim(),
-        link: '/my-bookings'
-      });
-    } catch (notifErr) {
-      console.error('Failed to create message notification:', notifErr);
-    }
 
     res.status(201).json(message);
   } catch (err) {

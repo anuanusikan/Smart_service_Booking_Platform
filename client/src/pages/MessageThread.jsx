@@ -32,6 +32,7 @@ function MessageThread({ bookingId, otherPersonName, onClose }) {
       if (!sendInProgress.current && version === messageVersion.current) {
         if (Array.isArray(data)) {
           setMessages(data);
+          window.dispatchEvent(new Event('messagesRead'));
         } else {
           setError('Could not load messages. Please reopen the chat to try again.');
         }

@@ -7,21 +7,32 @@ const router = express.Router();
 // GET all notifications for the current user
 router.get('/', authMiddleware, async (req, res) => {
   try {
-    const notifications = await Notification.find({
-      recipient: req.user.id
-    })
+    const page = Number(req.query.page || 1);
+    if (!Number.isSafeInteger(page) || page < 1 || page > 1000000) {
+      return res.status(400).json({ message: 'Invalid notification page' });
+    }
+    const filter = { recipient: req.user.id, type: { $ne: 'new_message' } };
+    if (req.query.types !== undefined) {
+      const allowed = ['booking_request', 'booking_status', 'quote_received', 'quote_status', 'system'];
+      if (typeof req.query.types !== 'string') return res.status(400).json({ message: 'Invalid notification types' });
+      filter.type = { $in: req.query.types.split(',').filter(type => allowed.includes(type)) };
+    }
+    const notifications = await Notification.find(filter)
       .populate('sender', 'name role profilePicture')
-      .sort({ createdAt: -1 })
-      .limit(30);
+      .sort({ createdAt: -1, _id: -1 })
+      .skip((page - 1) * 30)
+      .limit(31);
 
     const unreadCount = await Notification.countDocuments({
-      recipient: req.user.id,
+      ...filter,
       read: false
     });
 
     res.json({
-      notifications,
-      unreadCount
+      notifications: notifications.slice(0, 30),
+      unreadCount,
+      page,
+      hasMore: notifications.length > 30
     });
   } catch (err) {
     res.status(500).json({

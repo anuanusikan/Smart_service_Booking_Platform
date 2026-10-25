@@ -311,8 +311,8 @@ export const messagesApi = {
 // -------------------------------------------------------------
 
 export const notificationsApi = {
-  getNotifications: (page = 1) =>
-    apiGet(`/notifications?page=${page}`, true),
+  getNotifications: (page = 1, types) =>
+    apiGet(`/notifications?page=${page}${types ? `&types=${encodeURIComponent(types)}` : ''}`, true),
 
   getAll: (page = 1) =>
     apiGet(`/notifications?page=${page}`, true),

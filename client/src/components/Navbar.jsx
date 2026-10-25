@@ -17,18 +17,28 @@ function Navbar({ onProfileClick, user, onOpenChat }) {
   const [notifications, setNotifications] = useState([]);
   const [loadingChats, setLoadingChats] = useState(false);
   const [loadingNotifs, setLoadingNotifs] = useState(false);
+  const [notificationPages, setNotificationPages] = useState(1);
+  const [hasMoreNotifications, setHasMoreNotifications] = useState(false);
+  const [notificationError, setNotificationError] = useState('');
+  const [totalUnread, setTotalUnread] = useState(0);
+  const seenPreferences = useRef(null);
+  const seenMessages = useRef(null);
 
   const userId = user?.id || user?._id;
   const [settings, updateSetting] = useNotificationSettings(userId);
   const visibleNotifications = notifications.filter(item => notificationEnabled(item, settings));
-  const unreadNotifs = visibleNotifications.filter(item => !item.read).length;
+  const unreadNotifs = totalUnread;
+  const notificationTypes = ['system', ...(settings.bookingAlerts ? ['booking_request', 'booking_status'] : []),
+    ...(settings.quoteAlerts ? ['quote_received', 'quote_status'] : [])].join(',');
+  const unreadMessages = conversations.reduce((sum, chat) => sum + (chat.unreadCount || 0), 0);
   const seenNotifications = useRef(null);
   const notificationsInFlight = useRef(false);
   const conversationsInFlight = useRef(false);
 
   useEffect(() => {
     const unlockSound = () => {
-      if (readNotificationSettings(userId).sound) prepareNotificationSound();
+      const preferences = readNotificationSettings(userId);
+      if (preferences.sound || preferences.messageSound) prepareNotificationSound();
     };
     window.addEventListener('pointerdown', unlockSound);
     window.addEventListener('keydown', unlockSound);
@@ -59,6 +69,14 @@ function Navbar({ onProfileClick, user, onOpenChat }) {
     try {
       const data = await messagesApi.getConversations();
       if (sessionStorage.getItem('token') !== token) return;
+      if (Array.isArray(data)) {
+        const preferences = readNotificationSettings(userId);
+        const incoming = data.filter(chat => chat.unreadCount > 0 && chat.lastMessage?.sender?._id !== userId);
+        if (seenMessages.current && preferences.messageSound &&
+          incoming.some(chat => chat.lastMessage?._id && !seenMessages.current.has(chat.lastMessage._id))) playNotificationSound();
+        if (!seenMessages.current) seenMessages.current = new Set();
+        data.forEach(chat => { if (chat.lastMessage?._id) seenMessages.current.add(chat.lastMessage._id); });
+      }
       setConversations(Array.isArray(data) ? data : []);
     } finally {
       conversationsInFlight.current = false;
@@ -71,25 +89,48 @@ function Navbar({ onProfileClick, user, onOpenChat }) {
     notificationsInFlight.current = true;
     setLoadingNotifs(true);
     try {
-      const data = await notificationsApi.getNotifications();
+      const collected = [];
+      let data;
+      for (let page = 1; page <= notificationPages; page += 1) {
+        data = await notificationsApi.getNotifications(page, notificationTypes);
+        if (!data || !Array.isArray(data.notifications)) {
+          setNotificationError('Could not load alerts. Please try again.');
+          return;
+        }
+        collected.push(...data.notifications);
+        if (!data.hasMore) break;
+      }
       if (sessionStorage.getItem('token') !== token) return;
+      const latest = readNotificationSettings(userId);
+      const latestTypes = ['system', ...(latest.bookingAlerts ? ['booking_request', 'booking_status'] : []),
+        ...(latest.quoteAlerts ? ['quote_received', 'quote_status'] : [])].join(',');
+      if (latestTypes !== notificationTypes) return;
       if (data && Array.isArray(data.notifications)) {
         const currentSettings = readNotificationSettings(userId);
         // Initial history is silent. Record disabled and read alerts too so
         // changing preferences or reopening the menu never replays them.
-        if (seenNotifications.current && currentSettings.sound &&
-            hasNewAlert(data.notifications, seenNotifications.current, currentSettings)) {
+        if (seenPreferences.current === notificationTypes && seenNotifications.current && currentSettings.sound &&
+            hasNewAlert(collected.slice(0, 30), seenNotifications.current, currentSettings)) {
           playNotificationSound();
         }
         if (!seenNotifications.current) seenNotifications.current = new Set();
-        data.notifications.forEach(item => seenNotifications.current.add(item._id));
-        setNotifications(data.notifications);
+        collected.forEach(item => seenNotifications.current.add(item._id));
+        seenPreferences.current = notificationTypes;
+        setNotifications([...new Map(collected.map(item => [item._id, item])).values()]);
+        setTotalUnread(data.unreadCount);
+        setHasMoreNotifications(data.hasMore);
+        setNotificationError('');
       }
     } finally {
       notificationsInFlight.current = false;
       setLoadingNotifs(false);
     }
-  }, [token, userId]);
+  }, [token, userId, notificationPages, notificationTypes]);
+
+  useEffect(() => {
+    window.addEventListener('messagesRead', fetchConversations);
+    return () => window.removeEventListener('messagesRead', fetchConversations);
+  }, [fetchConversations]);
 
   useEffect(() => {
     if (!userId || !token) return;
@@ -116,6 +157,7 @@ function Navbar({ onProfileClick, user, onOpenChat }) {
     try {
       const result = await notificationsApi.markAsRead(notifId);
       if (!result.ok) return;
+      if (notifications.some(n => n._id === notifId && !n.read)) setTotalUnread(count => Math.max(0, count - 1));
       setNotifications(prev => prev.map(n => n._id === notifId ? { ...n, read: true } : n));
     } catch (err) {
       // ignore
@@ -132,6 +174,7 @@ function Navbar({ onProfileClick, user, onOpenChat }) {
       const result = await notificationsApi.markAllAsRead();
       if (!result.ok) return;
       setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+      setTotalUnread(0);
     } catch (err) {
       // ignore
     }
@@ -142,6 +185,9 @@ function Navbar({ onProfileClick, user, onOpenChat }) {
       const result = await notificationsApi.clearAll();
       if (!result.ok) return;
       setNotifications([]);
+      setTotalUnread(0);
+      setHasMoreNotifications(false);
+      setNotificationPages(1);
     } catch (err) {
       // ignore
     }
@@ -230,9 +276,9 @@ function Navbar({ onProfileClick, user, onOpenChat }) {
                 title="Messages"
               >
                 <span>✉</span> Messages
-                {conversations.some(c => c.lastMessage) && (
+                {settings.messageAlerts && unreadMessages > 0 && (
                   <span className="nav-badge" style={{ background: 'var(--primary)' }}>
-                    {conversations.filter(c => c.lastMessage).length}
+                    {unreadMessages}
                   </span>
                 )}
               </button>
@@ -247,6 +293,14 @@ function Navbar({ onProfileClick, user, onOpenChat }) {
                   </div>
 
                   <div className="nav-dropdown-body">
+                    <div className="setting-switch">
+                      <label className="switch-label" htmlFor="message-alerts">Unread message badge</label>
+                      <input id="message-alerts" type="checkbox" className="switch-input" checked={settings.messageAlerts} onChange={() => updateSetting('messageAlerts')} />
+                    </div>
+                    <div className="setting-switch">
+                      <label className="switch-label" htmlFor="message-sound">Message sound</label>
+                      <input id="message-sound" type="checkbox" className="switch-input" checked={settings.messageSound} onChange={() => updateSetting('messageSound')} />
+                    </div>
                     {loadingChats && <p style={{ padding: '16px', margin: 0, fontSize: '13px', color: 'var(--slate)' }}>Loading chats...</p>}
                     {!loadingChats && conversations.length === 0 && (
                       <div style={{ padding: '24px 16px', textAlign: 'center' }}>
@@ -302,6 +356,7 @@ function Navbar({ onProfileClick, user, onOpenChat }) {
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2px' }}>
                             <span style={{ fontSize: '13px', fontWeight: '600', color: 'var(--navy)' }}>
                               {c.otherUser?.name || 'Service Partner'}
+                              {c.unreadCount > 0 && <span style={{ marginLeft: 8, color: 'var(--primary)', fontSize: 11 }}>{c.unreadCount} unread</span>}
                             </span>
                             <span style={{ fontSize: '11px', color: '#9CA3AF' }}>
                               {formatTime(c.updatedAt)}
@@ -330,7 +385,7 @@ function Navbar({ onProfileClick, user, onOpenChat }) {
                 type="button"
                 className={`nav-icon-btn ${openMenu === 'notifications' ? 'active' : ''}`}
                 onClick={() => toggleMenu('notifications')}
-                title="Unread alerts in your recent notifications"
+                title="Unread alerts matching your preferences"
               >
                 <span>🔔</span> Notifications
                 {unreadNotifs > 0 && <span className="nav-badge">{unreadNotifs}</span>}
@@ -379,7 +434,7 @@ function Navbar({ onProfileClick, user, onOpenChat }) {
                   {notifTab === 'alerts' ? (
                     <>
                       <div className="nav-dropdown-header" style={{ padding: '8px 16px', background: 'white' }}>
-                        <span style={{ fontSize: '12px', color: 'var(--slate)' }}>Recent Activities</span>
+                        <span style={{ fontSize: '12px', color: 'var(--slate)' }}>Your notifications</span>
                         <div style={{ display: 'flex', gap: '10px' }}>
                           {unreadNotifs > 0 && (
                             <button
@@ -403,6 +458,7 @@ function Navbar({ onProfileClick, user, onOpenChat }) {
                       </div>
 
                       <div className="nav-dropdown-body">
+                        {notificationError && <p role="alert" style={{ padding: '12px 16px', color: 'var(--danger)' }}>{notificationError} <button type="button" onClick={fetchNotifications}>Retry</button></p>}
                         {loadingNotifs && <p style={{ padding: '16px', margin: 0, fontSize: '13px', color: 'var(--slate)' }}>Loading alerts...</p>}
                         {!loadingNotifs && visibleNotifications.length === 0 && (
                           <div style={{ padding: '30px 16px', textAlign: 'center' }}>
@@ -434,6 +490,12 @@ function Navbar({ onProfileClick, user, onOpenChat }) {
                             </div>
                           );
                         })}
+                        {hasMoreNotifications && <div style={{ padding: '12px 16px', textAlign: 'center' }}>
+                          <button type="button" className="btn-outline btn-sm" disabled={loadingNotifs}
+                            onClick={() => setNotificationPages(pages => pages + 1)}>
+                            {loadingNotifs ? 'Loading...' : 'Load more'}
+                          </button>
+                        </div>}
                       </div>
                     </>
                   ) : (
@@ -455,20 +517,6 @@ function Navbar({ onProfileClick, user, onOpenChat }) {
                           aria-label="Booking alerts"
                 checked={settings.bookingAlerts}
                           onChange={() => updateSetting('bookingAlerts')}
-                        />
-                      </div>
-
-                      <div className="setting-switch">
-                        <div>
-                          <div className="switch-label">Direct Messages</div>
-                          <div className="switch-sublabel">Notify on incoming messages from clients</div>
-                        </div>
-                        <input
-                          type="checkbox"
-                          className="switch-input"
-                          aria-label="Message alerts"
-                checked={settings.messageAlerts}
-                          onChange={() => updateSetting('messageAlerts')}
                         />
                       </div>
 
