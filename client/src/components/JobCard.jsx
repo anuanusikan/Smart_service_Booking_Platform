@@ -1,4 +1,5 @@
 import JobDetailsFields from './JobDetailsFields';
+import { Link } from 'react-router-dom';
 import { appointmentLabel } from '../utils/appointments';
 
 function JobCard({
@@ -220,6 +221,11 @@ function JobCard({
                       <p style={{ margin: 0, fontWeight: 700, fontSize: '14px', color: 'var(--navy)' }}>
                         {quote.provider?.name || 'Service Provider'}
                       </p>
+                      {quote.provider?._id && (
+                        <Link to={`/provider/${quote.provider._id}`} className="quote-provider-profile-link">
+                          View profile
+                        </Link>
+                      )}
                       <p className="meta" style={{ margin: '2px 0 0' }}>
                         ⭐ {quote.provider?.rating ? quote.provider.rating.toFixed(1) : 'New Provider'} · {quote.provider?.location || 'Local'}
                       </p>
