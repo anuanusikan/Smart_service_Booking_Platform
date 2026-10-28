@@ -15,7 +15,7 @@ test('returns pending counts per owned job including zero, scoped to visible job
   Quote.aggregate.mockResolvedValue([{ _id: 'j1', count: 3 }]);
   const res = response();
   await mine({ user: { id: 'customer1', role: 'customer' } }, res);
-  expect(Job.find).toHaveBeenCalledWith({ postedBy: 'customer1', status: { $ne: 'deleted' } });
+  expect(Job.find).toHaveBeenCalledWith({ postedBy: 'customer1', status: { $ne: 'deleted' }, hiddenFromHistory: { $ne: true } });
   expect(Quote.aggregate).toHaveBeenCalledWith([
     { $match: { job: { $in: ['j1', 'j2'] }, status: 'pending' } },
     { $group: { _id: '$job', count: { $sum: 1 } } }

@@ -129,6 +129,18 @@ function MyJobs() {
     }
   });
 
+  const removeFromHistory = (jobId) => runAction(`hide:${jobId}`, async () => {
+    if (!window.confirm('Remove this completed job from My Posted Jobs? Bookings, reviews and provider earnings will be kept.')) return;
+    setMessage('');
+    const { ok, data } = await jobsApi.removeFromHistory(jobId);
+    if (ok) {
+      setJobs(current => current.filter(job => job._id !== jobId));
+      setMessage('Completed job removed from your history.');
+    } else {
+      setMessage(data?.message || 'Could not remove job from history');
+    }
+  });
+
   const loadQuotes = async (jobId) => {
     if (quoteRequests.current.has(jobId)) return;
     quoteRequests.current.add(jobId);
@@ -279,6 +291,7 @@ function MyJobs() {
               onCancelEdit={cancelEditing}
               onSaveEdit={saveEdit}
               onDelete={deleteJob}
+              onRemoveFromHistory={removeFromHistory}
               isQuotesOpen={openQuotesFor === job._id}
               onToggleQuotes={toggleQuotes}
               quotes={quotesByJob[job._id] || []}

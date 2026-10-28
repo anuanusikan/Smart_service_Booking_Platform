@@ -18,6 +18,7 @@ function JobCard({
   onCancelEdit,
   onSaveEdit,
   onDelete,
+  onRemoveFromHistory,
   isQuotesOpen = false,
   onToggleQuotes,
   quotes = [],
@@ -124,6 +125,12 @@ function JobCard({
                 </div>
 
                 <div className="job-card-actions">
+                  {job.status === 'completed' && userRole === 'customer' && (
+                    <button type="button" className="btn-danger-outline btn-sm"
+                      disabled={Boolean(pendingAction)} onClick={() => onRemoveFromHistory(job._id)}>
+                      {pendingAction === `hide:${job._id}` ? 'Removing...' : 'Remove from history'}
+                    </button>
+                  )}
                   {job.status === 'open' && (
                     <>
                       <button

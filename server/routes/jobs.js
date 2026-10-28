@@ -113,7 +113,7 @@ router.get('/mine', authMiddleware, async (req, res) => {
       return res.status(403).json({ message: 'Only customers can view their posted jobs' });
     }
 
-    const jobs = await Job.find({ postedBy: req.user.id, status: { $ne: 'deleted' } }).sort({ createdAt: -1 });
+    const jobs = await Job.find({ postedBy: req.user.id, status: { $ne: 'deleted' }, hiddenFromHistory: { $ne: true } }).sort({ createdAt: -1 });
     const counts = jobs.length ? await Quote.aggregate([
       { $match: { job: { $in: jobs.map(job => job._id) }, status: 'pending' } },
       { $group: { _id: '$job', count: { $sum: 1 } } }
@@ -189,6 +189,30 @@ router.delete('/:id', authMiddleware, requireRole('customer'), async (req, res) 
     res.json({ message: 'Job deleted successfully' });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
+// Hide completed jobs from the owner's list without changing linked records.
+router.delete('/:id/history', authMiddleware, requireRole('customer'), async (req, res) => {
+  try {
+    const job = await Job.findById(req.params.id);
+    if (!job) return res.status(404).json({ message: 'Job not found' });
+    if (job.postedBy.toString() !== req.user.id) {
+      return res.status(403).json({ message: 'Not authorized to remove this job from history' });
+    }
+    if (job.status !== 'completed') {
+      return res.status(400).json({ message: 'Only completed jobs can be removed from history' });
+    }
+    const hidden = await Job.findOneAndUpdate(
+      { _id: req.params.id, postedBy: req.user.id, status: 'completed' },
+      { $set: { hiddenFromHistory: true } },
+      { returnDocument: 'after', timestamps: false }
+    );
+    if (!hidden) return res.status(409).json({ message: 'This job has changed. Please refresh.' });
+    res.json({ message: 'Job removed from your history' });
+  } catch (err) {
+    if (err.name === 'CastError') return res.status(400).json({ message: 'Invalid job ID' });
+    res.status(500).json({ message: 'Could not remove job from history. Please try again.' });
   }
 });
 

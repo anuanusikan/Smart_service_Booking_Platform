@@ -35,6 +35,10 @@ const jobSchema = new mongoose.Schema({
     enum: ['open', 'assigned', 'completed', 'deleted'],
     default: 'open'
   },
+  hiddenFromHistory: {
+    type: Boolean,
+    default: false
+  },
   images: {
     type: [String],
     default: []

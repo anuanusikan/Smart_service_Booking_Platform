@@ -198,6 +198,8 @@ export const authApi = {
 // -------------------------------------------------------------
 
 export const jobsApi = {
+  removeFromHistory: (id) =>
+    apiDelete(`/jobs/${id}/history`, true),
   getMine: () =>
     apiGet('/jobs/mine', true),
 

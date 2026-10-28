@@ -58,5 +58,5 @@ test('cleanup can be retried on an already removed listing', async () => {
 test('removed listings are excluded from My Jobs', async () => {
   Job.find.mockReturnValue({ sort: jest.fn().mockResolvedValue([]) });
   await mine(req, res());
-  expect(Job.find).toHaveBeenCalledWith({ postedBy: 'c1', status: { $ne: 'deleted' } });
+  expect(Job.find).toHaveBeenCalledWith({ postedBy: 'c1', status: { $ne: 'deleted' }, hiddenFromHistory: { $ne: true } });
 });
