@@ -114,7 +114,12 @@ router.get('/mine', authMiddleware, async (req, res) => {
     }
 
     const jobs = await Job.find({ postedBy: req.user.id, status: { $ne: 'deleted' } }).sort({ createdAt: -1 });
-    res.json(jobs);
+    const counts = jobs.length ? await Quote.aggregate([
+      { $match: { job: { $in: jobs.map(job => job._id) }, status: 'pending' } },
+      { $group: { _id: '$job', count: { $sum: 1 } } }
+    ]) : [];
+    const pendingCounts = new Map(counts.map(item => [String(item._id), item.count]));
+    res.json(jobs.map(job => ({ ...job.toObject(), pendingQuoteCount: pendingCounts.get(String(job._id)) || 0 })));
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }

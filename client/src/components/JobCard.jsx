@@ -105,7 +105,8 @@ function JobCard({
                     <button
                       type="button"
                       onClick={() => onToggleQuotes(job._id)}
-                      className="btn-outline btn-sm"
+                      className="btn-outline btn-sm job-quotes-button"
+                      aria-expanded={isQuotesOpen}
                       style={{
                         background: isQuotesOpen ? 'var(--info-bg)' : 'transparent',
                         borderColor: isQuotesOpen ? 'var(--primary)' : 'var(--border)',
@@ -113,6 +114,11 @@ function JobCard({
                       }}
                     >
                       {isQuotesOpen ? '▲ Hide Quotes' : '💬 View Quotes'}
+                      {job.pendingQuoteCount > 0 && (
+                        <span className="job-quote-count" aria-label={`${job.pendingQuoteCount} pending quotes`}>
+                          {job.pendingQuoteCount > 99 ? '99+' : job.pendingQuoteCount}
+                        </span>
+                      )}
                     </button>
                   )}
                 </div>

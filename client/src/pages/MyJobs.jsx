@@ -37,7 +37,7 @@ function MyJobs() {
   const fetchJobs = async () => {
     try {
       const data = await jobsApi.getMine();
-      setJobs(Array.isArray(data) ? data : []);
+      if (Array.isArray(data)) setJobs(data);
     } finally {
       setLoading(false);
     }
@@ -45,6 +45,13 @@ function MyJobs() {
 
   useEffect(() => {
     fetchJobs();
+    const interval = setInterval(fetchJobs, 15000);
+    const onFocus = () => fetchJobs();
+    window.addEventListener('focus', onFocus);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', onFocus);
+    };
   }, []);
 
   const startEditing = (job) => {
@@ -133,6 +140,9 @@ function MyJobs() {
       const data = await quotesApi.getByJob(jobId, { signal: controller.signal });
       if (!Array.isArray(data)) throw new Error('Quotes unavailable');
       setQuotesByJob(current => ({ ...current, [jobId]: data }));
+      setJobs(current => current.map(job => job._id === jobId
+        ? { ...job, pendingQuoteCount: data.filter(quote => quote.status === 'pending').length }
+        : job));
     } catch {
       setQuoteErrors(current => ({ ...current, [jobId]: 'Could not load quotes. Please try again.' }));
     } finally {
@@ -149,9 +159,7 @@ function MyJobs() {
     }
     setOpenQuotesFor(jobId);
 
-    if (!quotesByJob[jobId]) {
-      await loadQuotes(jobId);
-    }
+    await loadQuotes(jobId);
   };
 
   const acceptQuote = (quoteId) => runAction(`accept:${quoteId}`, async () => {
@@ -172,6 +180,7 @@ function MyJobs() {
     if (ok) {
       const updated = (quotesByJob[jobId] || []).map(q => q._id === quoteId ? { ...q, status: 'declined' } : q);
       setQuotesByJob({ ...quotesByJob, [jobId]: updated });
+      await fetchJobs();
     } else {
       setMessage(data?.message || 'Failed to decline quote');
     }
