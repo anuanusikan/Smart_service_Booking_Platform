@@ -15,6 +15,8 @@ function BrowseJobs() {
   const [quoteForms, setQuoteForms] = useState({}); // { jobId: { price, message } }
   const [openQuoteForm, setOpenQuoteForm] = useState(null);
   const [filters, setFilters] = useState({
+    title: '',
+    sort: '',
     category: initialCategory,
     location: '',
     minBudget: '',
@@ -28,36 +30,39 @@ function BrowseJobs() {
       return null;
     }
   })();
+  const isProvider = user?.role === 'provider';
   useEffect(() => {
-    const isProvider = user?.role === 'provider';
-    let queryString = '';
-
-    if (!isProvider) {
-      const params = new URLSearchParams();
-      if (filters.category) params.append('category', filters.category);
-      if (filters.location) params.append('location', filters.location);
-      if (filters.minBudget) params.append('minBudget', filters.minBudget);
-      if (filters.maxBudget) params.append('maxBudget', filters.maxBudget);
-      queryString = params.toString();
+    let active = true;
+    setMessage('');
+    const params = new URLSearchParams();
+    for (const [key, value] of Object.entries(filters)) {
+      if (value !== '') params.set(key, value);
     }
-
-    const jobsPromise = isProvider ? jobsApi.getMatched() : jobsApi.getAll(queryString);
+    const queryString = params.toString();
+    const jobsPromise = isProvider ? jobsApi.getMatched(queryString) : jobsApi.getAll(queryString);
     const quotesPromise = isProvider ? quotesApi.getMine() : Promise.resolve([]);
 
     Promise.all([jobsPromise, quotesPromise])
       .then(([jobsData, quotesData]) => {
+        if (!active) return;
+        if (!Array.isArray(jobsData)) {
+          setMessage(jobsData?.message || 'Could not load jobs. Please try again.');
+        }
         setJobs(Array.isArray(jobsData) ? jobsData : []);
-
         const quotedMap = {};
         (Array.isArray(quotesData) ? quotesData : []).forEach(q => {
           if (q.job?._id && q.status === 'pending') quotedMap[q.job._id] = true;
         });
         setQuotedJobs(quotedMap);
-
         setInitialLoad(false);
       })
-      .catch(() => setInitialLoad(false));
-  }, [filters]);
+      .catch(() => {
+        if (!active) return;
+        setMessage('Could not load jobs. Please try again.');
+        setInitialLoad(false);
+      });
+    return () => { active = false; };
+  }, [filters, isProvider]);
 
   const updateQuoteForm = (jobId, field, value) => {
     setQuoteForms({
@@ -107,49 +112,51 @@ function BrowseJobs() {
 
   const jobsListContent = (
     <div className="centered-job-section">
-      {user?.role !== 'provider' && (
-        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '24px' }}>
-          <div className="filter-pill-bar">
-            <input
-              type="text"
-              placeholder="🔍 Category"
-              value={filters.category}
-              onChange={(e) => setFilters({ ...filters, category: e.target.value })}
-              style={{ width: '140px' }}
-            />
-            <input
-              type="text"
-              placeholder="📍 Location"
-              value={filters.location}
-              onChange={(e) => setFilters({ ...filters, location: e.target.value })}
-              style={{ width: '130px' }}
-            />
-            <input
-              type="number"
-              placeholder="Min Rs."
-              value={filters.minBudget}
-              onChange={(e) => setFilters({ ...filters, minBudget: e.target.value })}
-              style={{ width: '105px' }}
-            />
-            <input
-              type="number"
-              placeholder="Max Rs."
-              value={filters.maxBudget}
-              onChange={(e) => setFilters({ ...filters, maxBudget: e.target.value })}
-              style={{ width: '105px' }}
-            />
-            {(filters.category || filters.location || filters.minBudget || filters.maxBudget) && (
-              <button
-                type="button"
-                className="filter-clear-btn"
-                onClick={() => setFilters({ category: '', location: '', minBudget: '', maxBudget: '' })}
-              >
-                ✕ Clear
-              </button>
-            )}
+      <section className="job-filters" aria-label="Search and filter jobs">
+        <label className="job-filter-field job-filter-search">
+          <span>Search jobs</span>
+          <input type="search" aria-label="Search job titles" placeholder="Search by job title"
+            value={filters.title} onChange={e => setFilters({ ...filters, title: e.target.value })} />
+        </label>
+        <label className="job-filter-field job-filter-sort">
+          <span>Sort by</span>
+          <select aria-label="Sort jobs" value={filters.sort} onChange={e => setFilters({ ...filters, sort: e.target.value })}>
+            <option value="">{isProvider ? 'Best match' : 'Newest first'}</option>
+            <option value="newest">Newest first</option>
+            <option value="oldest">Oldest first</option>
+            <option value="budget_asc">Budget: low to high</option>
+            <option value="budget_desc">Budget: high to low</option>
+          </select>
+        </label>
+        <label className="job-filter-field">
+          <span>Category</span>
+          <input type="text" aria-label="Category" placeholder="e.g. Plumbing" value={filters.category}
+            onChange={e => setFilters({ ...filters, category: e.target.value })} />
+        </label>
+        <label className="job-filter-field">
+          <span>Location</span>
+          <input type="text" aria-label="Location" placeholder="e.g. Kandy" value={filters.location}
+            onChange={e => setFilters({ ...filters, location: e.target.value })} />
+        </label>
+        <label className="job-filter-field">
+          <span>Min budget (Rs.)</span>
+          <input type="number" aria-label="Minimum budget" placeholder="No minimum" min="0" value={filters.minBudget}
+            onChange={e => setFilters({ ...filters, minBudget: e.target.value })} />
+        </label>
+        <label className="job-filter-field">
+          <span>Max budget (Rs.)</span>
+          <input type="number" aria-label="Maximum budget" placeholder="No maximum" min="0" value={filters.maxBudget}
+            onChange={e => setFilters({ ...filters, maxBudget: e.target.value })} />
+        </label>
+        {(filters.title || filters.sort || filters.category || filters.location || filters.minBudget || filters.maxBudget) && (
+          <div className="job-filter-actions">
+            <button type="button" className="job-filter-clear"
+              onClick={() => setFilters({ title: '', sort: '', category: '', location: '', minBudget: '', maxBudget: '' })}>
+              Clear filters
+            </button>
           </div>
-        </div>
-      )}
+        )}
+      </section>
 
       {message && (
         <div style={{ padding: '10px 14px', background: 'var(--success-bg)', color: 'var(--success-dark)', borderRadius: '8px', marginBottom: '16px', fontWeight: 600 }}>
@@ -160,8 +167,8 @@ function BrowseJobs() {
       {jobs.length === 0 && (
         <div className="card" style={{ textAlign: 'center', padding: '40px 20px' }}>
           <span style={{ fontSize: '32px', display: 'block', marginBottom: '8px' }}>💼</span>
-          <p style={{ margin: 0, fontWeight: 600, fontSize: '15px', color: 'var(--navy)' }}>No matched jobs found</p>
-          <p className="meta" style={{ margin: '4px 0 0' }}>Update your skills in Profile to match with more job postings.</p>
+          <p style={{ margin: 0, fontWeight: 600, fontSize: '15px', color: 'var(--navy)' }}>No jobs found</p>
+          <p className="meta" style={{ margin: '4px 0 0' }}>Try changing or clearing your filters to see more jobs.</p>
         </div>
       )}
 

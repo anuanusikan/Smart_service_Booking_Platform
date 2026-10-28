@@ -26,17 +26,22 @@ function Register() {
     e.preventDefault();
     setMessage('');
 
-    if (formData.name.trim().length < 2) {
-      setMessage('Please enter your full name.');
+    if (formData.name.trim().length < 2 || formData.name.trim().length > 100) {
+      setMessage('Please enter a name of 2 to 100 characters.');
       return;
     }
-    if (formData.password.length < 6) {
-      setMessage('Password must be at least 6 characters.');
+    if (formData.password.trim().length < 6 || new TextEncoder().encode(formData.password).length > 72) {
+      setMessage('Password must contain at least 6 non-padding characters and be at most 72 bytes.');
+      return;
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
+      setMessage('Please enter a valid email address.');
       return;
     }
 
     try {
-      const { ok, data } = await authApi.register(formData);
+      const { ok, data } = await authApi.register({ ...formData, name: formData.name.trim(), email: formData.email.trim() });
 
       if (ok) {
         setMessage('Registration successful! Redirecting to login...');

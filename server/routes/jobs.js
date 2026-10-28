@@ -7,6 +7,7 @@ const Job = require('../models/Job');
 const Quote = require('../models/Quote');
 const Booking = require('../models/Booking');
 const { validateJobInput } = require('../services/jobValidation');
+const { jobFilters, sortJobs } = require('../services/jobFilters');
 const { parseAppointment } = require('../services/appointments');
 const authMiddleware = require('../middleware/auth');
 const requireRole = require('../middleware/requireRole');
@@ -51,24 +52,12 @@ router.post('/', authMiddleware, requireRole('customer'), upload.array('images',
 // GET all jobs (public — anyone can browse)
 router.get('/', async (req, res) => {
   try {
-    const { category, location, minBudget, maxBudget } = req.query;
-
-    const filter = { status: 'open' };
-
-    if (category) {
-      filter.category = { $regex: category, $options: 'i' };
-    }
-    if (location) {
-      filter.location = { $regex: location, $options: 'i' };
-    }
-    if (minBudget || maxBudget) {
-      filter.budget = {};
-      if (minBudget) filter.budget.$gte = Number(minBudget);
-      if (maxBudget) filter.budget.$lte = Number(maxBudget);
-    }
+    let filter;
+    try { filter = jobFilters(req.query); }
+    catch (err) { return res.status(400).json({ message: err.message }); }
 
     const jobs = await Job.find(filter).populate('postedBy', 'location');
-    res.json(jobs);
+    res.json(sortJobs(jobs, req.query?.sort || 'newest'));
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
@@ -81,10 +70,16 @@ router.get('/matched', authMiddleware, async (req, res) => {
       return res.status(403).json({ message: 'Only providers can view matched jobs' });
     }
 
+    let filter;
+    try { filter = jobFilters(req.query); }
+    catch (err) { return res.status(400).json({ message: err.message }); }
+
     const User = require('../models/User');
     const provider = await User.findById(req.user.id);
 
-    const jobs = await Job.find({ status: 'open' }).populate('postedBy', 'name email location');
+    if (!provider) return res.status(404).json({ message: 'Provider not found' });
+
+    const jobs = await Job.find(filter).populate('postedBy', 'name email location');
 
     const providerSkills = (provider.skills || []).map(s => s.toLowerCase());
     const providerLocation = (provider.location || '').toLowerCase();
@@ -105,9 +100,7 @@ router.get('/matched', authMiddleware, async (req, res) => {
       return { ...job.toObject(), matchScore: score };
     });
 
-    scoredJobs.sort((a, b) => b.matchScore - a.matchScore);
-
-    res.json(scoredJobs);
+    res.json(sortJobs(scoredJobs, req.query?.sort || 'match'));
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }

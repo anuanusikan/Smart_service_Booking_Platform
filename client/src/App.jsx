@@ -103,7 +103,7 @@ function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/login" element={<Login onLoginSuccess={refreshUser} />} />
         <Route path="/post-job" element={requireLogin(<PostJob />, 'customer')} />
-        <Route path="/jobs" element={<BrowseJobs />} />
+        <Route path="/jobs" element={user?.role === 'customer' ? <Navigate to="/my-jobs" replace /> : <BrowseJobs />} />
         <Route path="/my-bookings" element={requireLogin(<MyBookings />)} />
         <Route path="/my-quotes" element={requireLogin(<MyQuotes />, 'provider')} />
         <Route path="/my-jobs" element={requireLogin(<MyJobs />, 'customer')} />

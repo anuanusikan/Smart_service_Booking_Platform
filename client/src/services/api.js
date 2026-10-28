@@ -201,8 +201,8 @@ export const jobsApi = {
   getMine: () =>
     apiGet('/jobs/mine', true),
 
-  getMatched: () =>
-    apiGet('/jobs/matched', true),
+  getMatched: (queryString = '') =>
+    apiGet(`/jobs/matched${queryString ? `?${queryString}` : ''}`, true),
 
   getAll: (queryString = '') =>
     apiGet(

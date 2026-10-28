@@ -29,7 +29,7 @@ function ProviderPortalLayout({ children, title, subtitle, extraAction }) {
     const token = sessionStorage.getItem('token');
     if (token) {
       authApi.getMe().then((me) => {
-        if (me && me.profilePicture && me.profilePicture !== user?.profilePicture) {
+        if (sessionStorage.getItem('token') === token && me?.profilePicture && me.profilePicture !== readUser()?.profilePicture) {
           const stored = readUser() || {};
           const synced = { ...stored, profilePicture: me.profilePicture };
           sessionStorage.setItem('user', JSON.stringify(synced));

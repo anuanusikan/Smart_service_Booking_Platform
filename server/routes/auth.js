@@ -8,13 +8,16 @@ const { storage: profileStorage } = require('../config/cloudinaryProfile');
 const uploadProfilePic = multer({ storage: profileStorage });
 const authMiddleware = require('../middleware/auth');
 const { DEFAULT_SETTINGS } = require('../services/notificationSettings');
+const { validateRegistration } = require('../services/registrationValidation');
 
 const router = express.Router();
 
 // REGISTER
 router.post('/register', async (req, res) => {
   try {
-    const { name, email, password, role, skills, location, hourlyRate } = req.body;
+    const validated = validateRegistration(req.body);
+    if (validated.message) return res.status(400).json({ message: validated.message, errors: validated.errors });
+    const { name, email, password, role, skills, location, hourlyRate } = validated.value;
 
     // Check if user already exists
     const existingUser = await User.findOne({ email });
@@ -41,6 +44,7 @@ router.post('/register', async (req, res) => {
 
     res.status(201).json({ message: 'User registered successfully' });
   } catch (err) {
+    if (err.code === 11000) return res.status(400).json({ message: 'Email already registered' });
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 });

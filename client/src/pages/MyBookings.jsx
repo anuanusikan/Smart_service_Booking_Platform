@@ -1,5 +1,5 @@
 import { appointmentLabel } from '../utils/appointments';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import MessageThread from './MessageThread';
 import ProviderPortalLayout from '../components/ProviderPortalLayout';
@@ -25,10 +25,11 @@ function MyBookings() {
   })();
   const token = sessionStorage.getItem('token');
 
-  const fetchBookings = () => {
+  const userRole = user?.role;
+  const fetchBookings = useCallback(() => {
     Promise.all([
       bookingsApi.getHistory(),
-      user?.role === 'customer' ? reviewsApi.getMine() : Promise.resolve([])
+      userRole === 'customer' ? reviewsApi.getMine() : Promise.resolve([])
     ])
       .then(([bookingsData, reviewedIds]) => {
         setBookings(Array.isArray(bookingsData) ? bookingsData : []);
@@ -42,11 +43,11 @@ function MyBookings() {
         setLoading(false);
       })
       .catch(() => setLoading(false));
-  };
+  }, [userRole]);
 
   useEffect(() => {
     fetchBookings();
-  }, []);
+  }, [fetchBookings]);
 
   const handleAction = async (bookingId, status) => {
     setMessage('');

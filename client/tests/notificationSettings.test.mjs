@@ -14,9 +14,9 @@ test('preferences are isolated by account and invalid values get safe defaults',
   store.set(settingsKey('p1'), 'broken JSON');
   assert.deepEqual(readNotificationSettings('p1'), defaults);
 });
-test('all booking, quote and chat notification types follow the matching toggle', () => {
+test('booking and quote bell notifications follow the matching toggle', () => {
   const disabled = { bookingAlerts: false, messageAlerts: false, quoteAlerts: false, sound: true };
-  for (const type of ['booking_request', 'booking_status', 'quote_received', 'quote_status', 'new_message']) {
+  for (const type of ['booking_request', 'booking_status', 'quote_received', 'quote_status']) {
     assert.equal(notificationEnabled({ type }, disabled), false);
     assert.equal(notificationEnabled({ type }, defaults), true);
   }
@@ -52,4 +52,12 @@ test('audio is optional and the chime creates a short, quiet tone', () => {
   playNotificationSound();
   assert.equal(starts, 1);
   assert.equal(stops, 1);
+});
+
+
+test('chat stays separate from bell notifications regardless of preferences', () => {
+  for (const messageAlerts of [true, false]) {
+    assert.equal(notificationEnabled({ type: 'new_message' }, { ...defaults, messageAlerts }), false);
+    assert.equal(hasNewAlert([{ _id: 'chat1', type: 'new_message', read: false }], new Set(), { ...defaults, messageAlerts }), false);
+  }
 });

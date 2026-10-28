@@ -29,7 +29,7 @@ function CustomerPortalLayout({ children, title, subtitle, extraAction, centerCo
     const token = sessionStorage.getItem('token');
     if (token) {
       authApi.getMe().then((me) => {
-        if (me && me.profilePicture && me.profilePicture !== user?.profilePicture) {
+        if (sessionStorage.getItem('token') === token && me?.profilePicture && me.profilePicture !== readUser()?.profilePicture) {
           const stored = readUser() || {};
           const synced = { ...stored, profilePicture: me.profilePicture };
           sessionStorage.setItem('user', JSON.stringify(synced));
@@ -49,7 +49,6 @@ function CustomerPortalLayout({ children, title, subtitle, extraAction, centerCo
     { label: 'Post a New Job', path: '/post-job', icon: '➕' },
     { label: 'My Posted Jobs', path: '/my-jobs', icon: '💼' },
     { label: 'Booking Requests', path: '/my-bookings', icon: '📋' },
-    { label: 'Find Services', path: '/jobs', icon: '🔍' },
   ];
 
   return (

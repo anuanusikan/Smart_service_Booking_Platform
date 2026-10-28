@@ -21,12 +21,21 @@ app.use('/api/messages', messageRoutes);
 app.use('/api/quotes', quoteRoutes);
 app.use('/api/notifications', notificationRoutes);
 
-mongoose.connect(process.env.MONGO_URI)
-  .then(() => console.log("MongoDB Connected"))
-  .catch(err => console.log(err));
-  
 app.get('/api/test', (req, res) => {
   res.json({ message: 'API working!' });
 });
 
-app.listen(process.env.PORT, () => console.log(`Server running on port ${process.env.PORT}`));
+if (require.main === module) {
+  mongoose.connect(process.env.MONGO_URI)
+    .then(() => {
+      console.log('MongoDB Connected');
+      const port = process.env.PORT || 5000;
+      app.listen(port, () => console.log(`Server running on port ${port}`));
+    })
+    .catch(() => {
+      console.error('MongoDB connection failed. Check MONGO_URI and database access.');
+      process.exitCode = 1;
+    });
+}
+
+module.exports = app;
