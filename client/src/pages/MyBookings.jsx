@@ -1,6 +1,6 @@
 import { appointmentLabel } from '../utils/appointments';
 import { useState, useEffect, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import MessageThread from './MessageThread';
 import ProviderPortalLayout from '../components/ProviderPortalLayout';
 import CustomerPortalLayout from '../components/CustomerPortalLayout';
@@ -12,7 +12,13 @@ function MyBookings() {
   const [message, setMessage] = useState('');
   const [reviewForms, setReviewForms] = useState({});
   const [reviewedBookings, setReviewedBookings] = useState({});
-  const [activeTab, setActiveTab] = useState('active');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = searchParams.get('tab') === 'history' ? 'history' : 'active';
+  const selectedJob = searchParams.get('job');
+  const setActiveTab = tab => setSearchParams(tab === 'history' ? { tab: 'history' } : {});
+  const [reviewingId, setReviewingId] = useState(null);
+  const [submittingReview, setSubmittingReview] = useState(false);
+
   const [activeChat, setActiveChat] = useState(null);
 
   const user = (() => {
@@ -53,7 +59,8 @@ function MyBookings() {
     setMessage('');
     const { ok, data } = await bookingsApi.updateStatus(bookingId, status);
     if (ok) {
-      setMessage(`Booking ${status}`);
+      setMessage(status === 'completed' ? 'Booking completed. You can leave an optional review in History.' : `Booking ${status}`);
+      if (status === 'completed') setActiveTab('history');
       fetchBookings();
     } else {
       setMessage(data?.message || 'Action failed');
@@ -72,6 +79,7 @@ function MyBookings() {
   };
 
   const handleDelete = async (bookingId) => {
+    if (!window.confirm('Remove this booking from your history? Reviews and provider earnings will be kept. A review is not required.')) return;
     setMessage('');
     const { ok, data } = await bookingsApi.removeFromHistory(bookingId);
     if (ok) {
@@ -101,13 +109,17 @@ function MyBookings() {
       return;
     }
 
+    if (submittingReview) return;
+    setSubmittingReview(true);
     const { ok, data } = await reviewsApi.create({
       bookingId,
       rating: Number(form.rating),
       comment: form.comment || ''
     });
 
+    setSubmittingReview(false);
     if (ok) {
+      setReviewingId(null);
       setMessage('Review submitted, thank you!');
       setReviewedBookings({ ...reviewedBookings, [bookingId]: true });
     } else {
@@ -128,13 +140,20 @@ function MyBookings() {
     return <p style={{ padding: '32px' }}>Loading bookings...</p>;
   }
 
-  const belongsInHistory = b => b.status === 'declined' ||
-    (b.status === 'completed' && (user?.role === 'provider' || reviewedBookings[b._id]));
-  const activeBookings = bookings.filter(b => !belongsInHistory(b));
-  const historyBookings = bookings.filter(belongsInHistory);
+  const visibleBookings = selectedJob ? bookings.filter(b => b.job?._id === selectedJob) : bookings;
+  const activeBookings = visibleBookings.filter(b => ['pending', 'accepted'].includes(b.status));
+  const historyBookings = visibleBookings.filter(b => ['completed', 'declined'].includes(b.status));
 
   const bookingsBody = (
     <div className="centered-job-section">
+      {selectedJob && (
+        <p className="meta">Showing bookings for the selected job.{' '}
+          <Link to="/my-bookings?tab=history">View all booking history</Link>
+        </p>
+      )}
+      {activeTab === 'history' && userRole === 'customer' && (
+        <p className="meta">Reviews are optional. You can review completed work later or remove it from your history without reviewing.</p>
+      )}
       <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '24px' }}>
         <div className="tab-nav-bar" style={{ marginBottom: 0 }}>
           <button
@@ -308,7 +327,7 @@ function MyBookings() {
                   )}
                   <div>
                     <div style={{ fontSize: '11px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748B' }}>
-                      Assigned Provider
+                      {booking.status === 'pending' ? 'Requesting Provider' : 'Assigned Provider'}
                     </div>
                     <div style={{ fontSize: '14px', fontWeight: '600', color: 'var(--navy)' }}>
                       <Link to={`/provider/${booking.provider?._id}`} style={{ color: 'var(--primary)', textDecoration: 'none' }}>
@@ -386,43 +405,7 @@ function MyBookings() {
               </div>
             </div>
 
-            {/* Review form drawer when completed */}
-            {user?.role === 'customer' && booking.status === 'completed' && !reviewedBookings[booking._id] && (
-              <div className="job-card-drawer" style={{ background: 'linear-gradient(135deg, #F8FAFC 0%, #EEF2F6 100%)', borderRadius: '12px', marginTop: '16px', border: '1px solid #E2E8F0', padding: '16px 20px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-                  <span style={{ fontSize: '18px' }}>⭐</span>
-                  <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 700, color: 'var(--navy)' }}>
-                    Leave a Review for {booking.provider?.name || 'Provider'}
-                  </h4>
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '10px' }}>
-                  <select
-                    value={reviewForms[booking._id]?.rating || ''}
-                    onChange={(e) => updateReviewForm(booking._id, 'rating', e.target.value)}
-                    style={{ marginBottom: 0, background: '#fff' }}
-                  >
-                    <option value="">Select rating (Required)</option>
-                    <option value="5">⭐⭐⭐⭐⭐ 5 - Excellent</option>
-                    <option value="4">⭐⭐⭐⭐ 4 - Good</option>
-                    <option value="3">⭐⭐⭐ 3 - Average</option>
-                    <option value="2">⭐⭐ 2 - Below Average</option>
-                    <option value="1">⭐ 1 - Poor</option>
-                  </select>
-                  <textarea
-                    placeholder="Share your experience working with this provider (optional)..."
-                    rows={2}
-                    value={reviewForms[booking._id]?.comment || ''}
-                    onChange={(e) => updateReviewForm(booking._id, 'comment', e.target.value)}
-                    style={{ marginBottom: 0, background: '#fff' }}
-                  />
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '4px' }}>
-                    <button onClick={() => submitReview(booking._id)} className="btn-success btn-sm">
-                      ✓ Submit Review
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
+
           </div>
         ))}
 
@@ -493,8 +476,17 @@ function MyBookings() {
               </div>
             )}
 
-            {/* Footer with right-aligned remove button */}
-            <div className="job-card-footer" style={{ justifyContent: 'flex-end' }}>
+            <div className="job-card-footer">
+              <div>
+                {userRole === 'customer' && booking.status === 'completed' && (
+                  reviewedBookings[booking._id] ? <span className="status-badge status-completed">Reviewed</span> : (
+                    <button type="button" className="btn-outline btn-sm" aria-expanded={reviewingId === booking._id}
+                      onClick={() => setReviewingId(reviewingId === booking._id ? null : booking._id)}>
+                      {reviewingId === booking._id ? 'Close review' : 'Review'}
+                    </button>
+                  )
+                )}
+              </div>
               <button
                 onClick={() => handleDelete(booking._id)}
                 className="btn-outline btn-sm"
@@ -503,6 +495,47 @@ function MyBookings() {
                 🗑️ Remove from History
               </button>
             </div>
+
+            {/* Optional review, available only in booking history. */}
+            {user?.role === 'customer' && booking.status === 'completed' && !reviewedBookings[booking._id] && reviewingId === booking._id && (
+              <div className="job-card-drawer" style={{ background: 'linear-gradient(135deg, #F8FAFC 0%, #EEF2F6 100%)', borderRadius: '12px', marginTop: '16px', border: '1px solid #E2E8F0', padding: '16px 20px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                  <span style={{ fontSize: '18px' }}>⭐</span>
+                  <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 700, color: 'var(--navy)' }}>
+                    Leave a Review for {booking.provider?.name || 'Provider'}
+                  </h4>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '10px' }}>
+                  <select
+                    aria-label="Review rating"
+                    value={reviewForms[booking._id]?.rating || ''}
+                    onChange={(e) => updateReviewForm(booking._id, 'rating', e.target.value)}
+                    style={{ marginBottom: 0, background: '#fff' }}
+                  >
+                    <option value="">Select rating (Required)</option>
+                    <option value="5">⭐⭐⭐⭐⭐ 5 - Excellent</option>
+                    <option value="4">⭐⭐⭐⭐ 4 - Good</option>
+                    <option value="3">⭐⭐⭐ 3 - Average</option>
+                    <option value="2">⭐⭐ 2 - Below Average</option>
+                    <option value="1">⭐ 1 - Poor</option>
+                  </select>
+                  <textarea
+                    aria-label="Review comment"
+                    placeholder="Share your experience working with this provider (optional)..."
+                    rows={2}
+                    value={reviewForms[booking._id]?.comment || ''}
+                    onChange={(e) => updateReviewForm(booking._id, 'comment', e.target.value)}
+                    style={{ marginBottom: 0, background: '#fff' }}
+                  />
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '4px' }}>
+                    <button type="button" className="btn-outline btn-sm" disabled={submittingReview} onClick={() => setReviewingId(null)}>Maybe later</button>
+                    <button disabled={submittingReview} onClick={() => submitReview(booking._id)} className="btn-success btn-sm">
+                      ✓ {submittingReview ? 'Submitting...' : 'Submit Review'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         ))}
       </div>
@@ -521,7 +554,7 @@ function MyBookings() {
     return (
       <ProviderPortalLayout
         title="My Requests & Bookings"
-        subtitle="Manage incoming service requests and ongoing client jobs."
+        subtitle="Track your pending requests, accepted bookings, and completed work."
       >
         {bookingsBody}
       </ProviderPortalLayout>
@@ -531,8 +564,8 @@ function MyBookings() {
   if (user?.role === 'customer') {
     return (
       <CustomerPortalLayout
-        title="Booking Requests & Hires"
-        subtitle="Manage active job bookings, communicate with providers, and leave ratings."
+        title="My Bookings"
+        subtitle="Manage requests and ongoing work in Active. Find completed bookings and optional reviews in History."
         centerContent
       >
         {bookingsBody}

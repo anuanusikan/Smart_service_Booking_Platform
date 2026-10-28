@@ -178,7 +178,7 @@ function MyJobs() {
     setMessage('');
     const { ok, data } = await quotesApi.accept(quoteId);
     if (ok) {
-      setMessage('Quote accepted! A booking has been created — check Booking Requests.');
+      setMessage('Quote accepted! A booking has been created — check My Bookings.');
       setOpenQuotesFor(null);
       await fetchJobs();
     } else {

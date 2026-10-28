@@ -127,10 +127,13 @@ function JobCard({
 
                 <div className="job-card-actions">
                   {job.status === 'completed' && userRole === 'customer' && (
+                    <>
+                    <Link to={`/my-bookings?tab=history&job=${job._id}`} className="btn-outline btn-sm">View booking</Link>
                     <button type="button" className="btn-danger-outline btn-sm"
                       disabled={Boolean(pendingAction)} onClick={() => onRemoveFromHistory(job._id)}>
                       {pendingAction === `hide:${job._id}` ? 'Removing...' : 'Remove from history'}
                     </button>
+                    </>
                   )}
                   {job.status === 'open' && (
                     <>

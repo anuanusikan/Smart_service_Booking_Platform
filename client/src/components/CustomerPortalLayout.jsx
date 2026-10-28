@@ -1,3 +1,4 @@
+import { customerNavigation } from '../utils/portalNavigation';
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { authApi } from '../services/api';
@@ -44,12 +45,7 @@ function CustomerPortalLayout({ children, title, subtitle, extraAction, centerCo
     };
   }, []);
 
-  const navItems = [
-    { label: 'Dashboard', path: '/dashboard', icon: '📊' },
-    { label: 'Post a New Job', path: '/post-job', icon: '➕' },
-    { label: 'My Posted Jobs', path: '/my-jobs', icon: '💼' },
-    { label: 'Booking Requests', path: '/my-bookings', icon: '📋' },
-  ];
+  const navItems = customerNavigation;
 
   return (
     <div className="dash-layout">

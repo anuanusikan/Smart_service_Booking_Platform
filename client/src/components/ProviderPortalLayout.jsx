@@ -1,3 +1,4 @@
+import { providerNavigation } from '../utils/portalNavigation';
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { authApi } from '../services/api';
@@ -44,15 +45,7 @@ function ProviderPortalLayout({ children, title, subtitle, extraAction }) {
     };
   }, []);
 
-  const navItems = [
-    { label: 'Dashboard', path: '/provider-dashboard', icon: '📊' },
-    { label: 'Matched Jobs', path: '/jobs', icon: '💼' },
-    { label: 'My Quotes', path: '/my-quotes', icon: 'Q' },
-    { label: 'My Requests', path: '/my-bookings', icon: '📋' },
-    { label: 'Earnings', path: '/provider-earnings', icon: '💰' },
-    { label: 'Reviews', path: '/my-reviews', icon: '⭐' },
-    { label: 'Schedule', path: '/provider-schedule', icon: '📅' },
-  ];
+  const navItems = providerNavigation;
 
   return (
     <div className="dash-layout">

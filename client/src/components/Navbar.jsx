@@ -1,3 +1,4 @@
+import { customerNavigation, providerNavigation } from '../utils/portalNavigation';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { messagesApi, notificationsApi } from '../services/api';
@@ -11,7 +12,12 @@ function Navbar({ onProfileClick, user, onOpenChat }) {
   const isPublicPage = ['/', '/login', '/register'].includes(pathname);
   const dashboardPath = user?.role === 'provider' ? '/provider-dashboard' : '/dashboard';
 
-  const [openMenu, setOpenMenu] = useState(null); // null | 'messages' | 'notifications'
+  const [openMenu, setOpenMenu] = useState(null); // null | 'messages' | 'notifications' | 'navigation'
+  useEffect(() => {
+    const onEscape = event => { if (event.key === 'Escape') setOpenMenu(null); };
+    window.addEventListener('keydown', onEscape);
+    return () => window.removeEventListener('keydown', onEscape);
+  }, []);
   const [notifTab, setNotifTab] = useState('alerts'); // 'alerts' | 'settings'
   const [conversations, setConversations] = useState([]);
   const [notifications, setNotifications] = useState([]);
@@ -222,12 +228,34 @@ function Navbar({ onProfileClick, user, onOpenChat }) {
 
   return (
     <div className={`navbar${isPublicPage || !user ? ' navbar-public' : ''}`} ref={menuRef}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+      {user && !isPublicPage && (
+<div className="nav-dropdown-wrapper mobile-portal-navigation">
+              <button type="button" className={`nav-icon-btn ${openMenu === 'navigation' ? 'active' : ''}`}
+                aria-label="Navigation menu" aria-expanded={openMenu === 'navigation'} aria-controls="mobile-portal-links"
+                onClick={() => toggleMenu('navigation')}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+                  <path d={openMenu === 'navigation' ? 'M6 6l12 12M18 6L6 18' : 'M4 6h16M4 12h16M4 18h16'} />
+                </svg>
+              </button>
+              {openMenu === 'navigation' && (
+                <nav id="mobile-portal-links" className="nav-dropdown-menu mobile-portal-links" aria-label="Dashboard navigation">
+                  <div className="nav-dropdown-header">{user.role === 'provider' ? 'Provider menu' : 'Customer menu'}</div>
+                  {(user.role === 'provider' ? providerNavigation : customerNavigation).map(item => (
+                    <Link key={item.path} to={item.path} aria-current={pathname === item.path ? 'page' : undefined}
+                      onClick={() => setOpenMenu(null)}>
+                      <span aria-hidden="true">{item.icon}</span>{item.label}
+                    </Link>
+                  ))}
+                </nav>
+              )}
+            </div>
+      )}
+      <div className="navbar-brand" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
         <Link to={isPublicPage || !user ? '/' : dashboardPath} className="logo">
           <span style={{ fontSize: '22px' }}>⚡</span> ServiceSync
         </Link>
         {!isPublicPage && user?.role === 'provider' && (
-          <span
+          <span className="portal-label"
             style={{
               fontSize: '11px',
               fontWeight: '600',
@@ -244,7 +272,7 @@ function Navbar({ onProfileClick, user, onOpenChat }) {
           </span>
         )}
         {!isPublicPage && user?.role === 'customer' && (
-          <span
+          <span className="portal-label"
             style={{
               fontSize: '11px',
               fontWeight: '600',
@@ -274,8 +302,14 @@ function Navbar({ onProfileClick, user, onOpenChat }) {
                 className={`nav-icon-btn ${openMenu === 'messages' ? 'active' : ''}`}
                 onClick={() => toggleMenu('messages')}
                 title="Messages"
+                aria-label="Messages"
+                aria-expanded={openMenu === 'messages'}
               >
-                <span>✉</span> Messages
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <rect x="3" y="5" width="18" height="14" rx="2" />
+                  <path d="m3 6 9 7 9-7" />
+                </svg>
+                <span className="nav-action-label">Messages</span>
                 {settings.messageAlerts && unreadMessages > 0 && (
                   <span className="nav-badge" style={{ background: 'var(--primary)' }}>
                     {unreadMessages}
@@ -387,8 +421,13 @@ function Navbar({ onProfileClick, user, onOpenChat }) {
                 className={`nav-icon-btn ${openMenu === 'notifications' ? 'active' : ''}`}
                 onClick={() => toggleMenu('notifications')}
                 title="Unread alerts matching your preferences"
+                aria-label="Notifications"
+                aria-expanded={openMenu === 'notifications'}
               >
-                <span>🔔</span> Notifications
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" />
+                </svg>
+                <span className="nav-action-label">Notifications</span>
                 {unreadNotifs > 0 && <span className="nav-badge">{unreadNotifs}</span>}
               </button>
 
@@ -565,6 +604,10 @@ function Navbar({ onProfileClick, user, onOpenChat }) {
               className="user-pill"
               onClick={onProfileClick}
               title="Profile & Account Settings"
+              role="button"
+              tabIndex={0}
+              aria-label="Profile and account settings"
+              onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onProfileClick(); } }}
             >
               {user?.profilePicture ? (
                 <img
