@@ -1,3 +1,4 @@
+import JobPhotos from './JobPhotos';
 import JobDetailsFields from './JobDetailsFields';
 import { Link } from 'react-router-dom';
 import { appointmentLabel } from '../utils/appointments';
@@ -43,7 +44,7 @@ function JobCard({
   const budgetDisplay = job.budget != null ? Number(job.budget).toLocaleString() : '0';
 
   return (
-    <div className="job-card">
+    <div className="job-card service-job-card">
       {/* CARD HEADER */}
       <div className="job-card-header">
         <div className="job-card-pills">
@@ -58,12 +59,11 @@ function JobCard({
             </span>
           )}
 
-          <span className="job-card-pill">📁 {job.category}</span>
-          <span className="job-card-pill">📍 {job.location || 'Remote / Local'}</span>
+
         </div>
 
         <div className="job-card-budget">
-          <span className="budget-label">Budget:</span>
+          <span className="budget-label">Estimated budget</span>
           <span className="budget-val">Rs. {budgetDisplay}</span>
         </div>
       </div>
@@ -92,10 +92,21 @@ function JobCard({
       ) : (
         <>
           {/* TITLE & DESCRIPTION */}
-          <h3 className="job-card-title">{job.title}</h3>
-          <p className="job-card-desc">{job.description}</p>
+          <div className="service-job-intro">
+            <h3 className="job-card-title">{job.title}</h3>
+          </div>
+          <dl className="service-job-details">
+            <div><dt>Category</dt><dd>{job.category || 'Not specified'}</dd></div>
+            <div><dt>Location</dt><dd>{job.location || 'To be arranged'}</dd></div>
+            <div><dt>Appointment</dt><dd>{appointmentLabel(job.scheduledAt)}</dd></div>
+            {job.createdAt && <div><dt>Posted on</dt><dd>{new Date(job.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Colombo' })}</dd></div>}
+          </dl>
+          <section className="service-job-description" aria-label="Job description">
+            <h4>About this job</h4>
+            <p className="job-card-desc">{job.description}</p>
+          </section>
 
-          <p className="job-appointment"><span aria-hidden="true">&#9687;</span> {appointmentLabel(job.scheduledAt)}</p>
+          <JobPhotos images={job.images} title={job.title} />
 
           {/* CARD FOOTER & ACTIONS */}
           <div className="job-card-footer">
