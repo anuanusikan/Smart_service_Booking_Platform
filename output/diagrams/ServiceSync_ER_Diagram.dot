@@ -1,0 +1,100 @@
+digraph ServiceSyncER {
+ graph [rankdir=LR, bgcolor="white", pad="0.5", nodesep="0.65", ranksep="1.05", splines=polyline, outputorder=edgesfirst,
+ label="ServiceSync  |  Entity relationship diagram
+MongoDB document model and Mongoose references", labelloc=t, labeljust=l, fontname="Arial", fontsize=25, fontcolor="#122e44"];
+ node [shape=plain, fontname="Arial"];
+ edge [fontname="Arial", fontsize=10, color="#6d879a", fontcolor="#415e73", penwidth=1.3, arrowsize=.7, dir=both, arrowtail=teetee, arrowhead=crowodot];
+ USER [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="9" COLOR="#d5dfe8">
+    <TR><TD COLSPAN="3" BGCOLOR="#173c58" ALIGN="LEFT"><FONT COLOR="white" POINT-SIZE="17"><B>USER</B></FONT></TD></TR>
+    <TR><TD BGCOLOR="white"><FONT COLOR="#52687a" POINT-SIZE="10"><B>PK</B></FONT></TD><TD PORT="_id" ALIGN="LEFT" BGCOLOR="white"><FONT POINT-SIZE="12">_id</FONT></TD><TD ALIGN="LEFT" BGCOLOR="white"><FONT COLOR="#61778a" POINT-SIZE="11">ObjectId</FONT></TD></TR>
+<TR><TD BGCOLOR="#f2f6f9"><FONT COLOR="#52687a" POINT-SIZE="10"><B>UK</B></FONT></TD><TD PORT="email" ALIGN="LEFT" BGCOLOR="#f2f6f9"><FONT POINT-SIZE="12">email</FONT></TD><TD ALIGN="LEFT" BGCOLOR="#f2f6f9"><FONT COLOR="#61778a" POINT-SIZE="11">String</FONT></TD></TR>
+<TR><TD BGCOLOR="white"><FONT COLOR="#52687a" POINT-SIZE="10"><B> </B></FONT></TD><TD PORT="name" ALIGN="LEFT" BGCOLOR="white"><FONT POINT-SIZE="12">name</FONT></TD><TD ALIGN="LEFT" BGCOLOR="white"><FONT COLOR="#61778a" POINT-SIZE="11">String</FONT></TD></TR>
+<TR><TD BGCOLOR="#f2f6f9"><FONT COLOR="#52687a" POINT-SIZE="10"><B> </B></FONT></TD><TD PORT="password" ALIGN="LEFT" BGCOLOR="#f2f6f9"><FONT POINT-SIZE="12">password</FONT></TD><TD ALIGN="LEFT" BGCOLOR="#f2f6f9"><FONT COLOR="#61778a" POINT-SIZE="11">String hash</FONT></TD></TR>
+<TR><TD BGCOLOR="white"><FONT COLOR="#52687a" POINT-SIZE="10"><B> </B></FONT></TD><TD PORT="role" ALIGN="LEFT" BGCOLOR="white"><FONT POINT-SIZE="12">role</FONT></TD><TD ALIGN="LEFT" BGCOLOR="white"><FONT COLOR="#61778a" POINT-SIZE="11">customer | provider</FONT></TD></TR>
+<TR><TD BGCOLOR="#f2f6f9"><FONT COLOR="#52687a" POINT-SIZE="10"><B> </B></FONT></TD><TD PORT="skills" ALIGN="LEFT" BGCOLOR="#f2f6f9"><FONT POINT-SIZE="12">skills</FONT></TD><TD ALIGN="LEFT" BGCOLOR="#f2f6f9"><FONT COLOR="#61778a" POINT-SIZE="11">String[]</FONT></TD></TR>
+<TR><TD BGCOLOR="white"><FONT COLOR="#52687a" POINT-SIZE="10"><B> </B></FONT></TD><TD PORT="location" ALIGN="LEFT" BGCOLOR="white"><FONT POINT-SIZE="12">location</FONT></TD><TD ALIGN="LEFT" BGCOLOR="white"><FONT COLOR="#61778a" POINT-SIZE="11">String</FONT></TD></TR>
+<TR><TD BGCOLOR="#f2f6f9"><FONT COLOR="#52687a" POINT-SIZE="10"><B> </B></FONT></TD><TD PORT="hourlyRate" ALIGN="LEFT" BGCOLOR="#f2f6f9"><FONT POINT-SIZE="12">hourlyRate</FONT></TD><TD ALIGN="LEFT" BGCOLOR="#f2f6f9"><FONT COLOR="#61778a" POINT-SIZE="11">Number</FONT></TD></TR>
+<TR><TD BGCOLOR="white"><FONT COLOR="#52687a" POINT-SIZE="10"><B> </B></FONT></TD><TD PORT="rating" ALIGN="LEFT" BGCOLOR="white"><FONT POINT-SIZE="12">rating</FONT></TD><TD ALIGN="LEFT" BGCOLOR="white"><FONT COLOR="#61778a" POINT-SIZE="11">Number</FONT></TD></TR>
+<TR><TD BGCOLOR="#f2f6f9"><FONT COLOR="#52687a" POINT-SIZE="10"><B> </B></FONT></TD><TD PORT="phone" ALIGN="LEFT" BGCOLOR="#f2f6f9"><FONT POINT-SIZE="12">phone</FONT></TD><TD ALIGN="LEFT" BGCOLOR="#f2f6f9"><FONT COLOR="#61778a" POINT-SIZE="11">String</FONT></TD></TR>
+<TR><TD BGCOLOR="white"><FONT COLOR="#52687a" POINT-SIZE="10"><B> </B></FONT></TD><TD PORT="profilePicture" ALIGN="LEFT" BGCOLOR="white"><FONT POINT-SIZE="12">profilePicture</FONT></TD><TD ALIGN="LEFT" BGCOLOR="white"><FONT COLOR="#61778a" POINT-SIZE="11">String URL</FONT></TD></TR>
+<TR><TD BGCOLOR="#f2f6f9"><FONT COLOR="#52687a" POINT-SIZE="10"><B> </B></FONT></TD><TD PORT="notificationSettings" ALIGN="LEFT" BGCOLOR="#f2f6f9"><FONT POINT-SIZE="12">notificationSettings</FONT></TD><TD ALIGN="LEFT" BGCOLOR="#f2f6f9"><FONT COLOR="#61778a" POINT-SIZE="11">Embedded document</FONT></TD></TR>
+    </TABLE>>];
+ JOB [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="9" COLOR="#d5dfe8">
+    <TR><TD COLSPAN="3" BGCOLOR="#173c58" ALIGN="LEFT"><FONT COLOR="white" POINT-SIZE="17"><B>JOB</B></FONT></TD></TR>
+    <TR><TD BGCOLOR="white"><FONT COLOR="#52687a" POINT-SIZE="10"><B>PK</B></FONT></TD><TD PORT="_id" ALIGN="LEFT" BGCOLOR="white"><FONT POINT-SIZE="12">_id</FONT></TD><TD ALIGN="LEFT" BGCOLOR="white"><FONT COLOR="#61778a" POINT-SIZE="11">ObjectId</FONT></TD></TR>
+<TR><TD BGCOLOR="#f2f6f9"><FONT COLOR="#167c75" POINT-SIZE="10"><B>REF</B></FONT></TD><TD PORT="postedBy" ALIGN="LEFT" BGCOLOR="#f2f6f9"><FONT POINT-SIZE="12">postedBy</FONT></TD><TD ALIGN="LEFT" BGCOLOR="#f2f6f9"><FONT COLOR="#61778a" POINT-SIZE="11">User ObjectId</FONT></TD></TR>
+<TR><TD BGCOLOR="white"><FONT COLOR="#52687a" POINT-SIZE="10"><B> </B></FONT></TD><TD PORT="title" ALIGN="LEFT" BGCOLOR="white"><FONT POINT-SIZE="12">title</FONT></TD><TD ALIGN="LEFT" BGCOLOR="white"><FONT COLOR="#61778a" POINT-SIZE="11">String</FONT></TD></TR>
+<TR><TD BGCOLOR="#f2f6f9"><FONT COLOR="#52687a" POINT-SIZE="10"><B> </B></FONT></TD><TD PORT="description" ALIGN="LEFT" BGCOLOR="#f2f6f9"><FONT POINT-SIZE="12">description</FONT></TD><TD ALIGN="LEFT" BGCOLOR="#f2f6f9"><FONT COLOR="#61778a" POINT-SIZE="11">String</FONT></TD></TR>
+<TR><TD BGCOLOR="white"><FONT COLOR="#52687a" POINT-SIZE="10"><B> </B></FONT></TD><TD PORT="category" ALIGN="LEFT" BGCOLOR="white"><FONT POINT-SIZE="12">category</FONT></TD><TD ALIGN="LEFT" BGCOLOR="white"><FONT COLOR="#61778a" POINT-SIZE="11">String</FONT></TD></TR>
+<TR><TD BGCOLOR="#f2f6f9"><FONT COLOR="#52687a" POINT-SIZE="10"><B> </B></FONT></TD><TD PORT="location" ALIGN="LEFT" BGCOLOR="#f2f6f9"><FONT POINT-SIZE="12">location</FONT></TD><TD ALIGN="LEFT" BGCOLOR="#f2f6f9"><FONT COLOR="#61778a" POINT-SIZE="11">String</FONT></TD></TR>
+<TR><TD BGCOLOR="white"><FONT COLOR="#52687a" POINT-SIZE="10"><B> </B></FONT></TD><TD PORT="budget" ALIGN="LEFT" BGCOLOR="white"><FONT POINT-SIZE="12">budget</FONT></TD><TD ALIGN="LEFT" BGCOLOR="white"><FONT COLOR="#61778a" POINT-SIZE="11">Number</FONT></TD></TR>
+<TR><TD BGCOLOR="#f2f6f9"><FONT COLOR="#52687a" POINT-SIZE="10"><B> </B></FONT></TD><TD PORT="scheduledAt" ALIGN="LEFT" BGCOLOR="#f2f6f9"><FONT POINT-SIZE="12">scheduledAt</FONT></TD><TD ALIGN="LEFT" BGCOLOR="#f2f6f9"><FONT COLOR="#61778a" POINT-SIZE="11">Date or null</FONT></TD></TR>
+<TR><TD BGCOLOR="white"><FONT COLOR="#52687a" POINT-SIZE="10"><B> </B></FONT></TD><TD PORT="status" ALIGN="LEFT" BGCOLOR="white"><FONT POINT-SIZE="12">status</FONT></TD><TD ALIGN="LEFT" BGCOLOR="white"><FONT COLOR="#61778a" POINT-SIZE="11">open | assigned | completed | deleted</FONT></TD></TR>
+<TR><TD BGCOLOR="#f2f6f9"><FONT COLOR="#52687a" POINT-SIZE="10"><B> </B></FONT></TD><TD PORT="images" ALIGN="LEFT" BGCOLOR="#f2f6f9"><FONT POINT-SIZE="12">images</FONT></TD><TD ALIGN="LEFT" BGCOLOR="#f2f6f9"><FONT COLOR="#61778a" POINT-SIZE="11">String URL[]</FONT></TD></TR>
+<TR><TD BGCOLOR="white"><FONT COLOR="#52687a" POINT-SIZE="10"><B> </B></FONT></TD><TD PORT="hiddenFromHistory" ALIGN="LEFT" BGCOLOR="white"><FONT POINT-SIZE="12">hiddenFromHistory</FONT></TD><TD ALIGN="LEFT" BGCOLOR="white"><FONT COLOR="#61778a" POINT-SIZE="11">Boolean</FONT></TD></TR>
+    </TABLE>>];
+ QUOTE [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="9" COLOR="#d5dfe8">
+    <TR><TD COLSPAN="3" BGCOLOR="#173c58" ALIGN="LEFT"><FONT COLOR="white" POINT-SIZE="17"><B>QUOTE</B></FONT></TD></TR>
+    <TR><TD BGCOLOR="white"><FONT COLOR="#52687a" POINT-SIZE="10"><B>PK</B></FONT></TD><TD PORT="_id" ALIGN="LEFT" BGCOLOR="white"><FONT POINT-SIZE="12">_id</FONT></TD><TD ALIGN="LEFT" BGCOLOR="white"><FONT COLOR="#61778a" POINT-SIZE="11">ObjectId</FONT></TD></TR>
+<TR><TD BGCOLOR="#f2f6f9"><FONT COLOR="#167c75" POINT-SIZE="10"><B>REF</B></FONT></TD><TD PORT="job" ALIGN="LEFT" BGCOLOR="#f2f6f9"><FONT POINT-SIZE="12">job</FONT></TD><TD ALIGN="LEFT" BGCOLOR="#f2f6f9"><FONT COLOR="#61778a" POINT-SIZE="11">Job ObjectId</FONT></TD></TR>
+<TR><TD BGCOLOR="white"><FONT COLOR="#167c75" POINT-SIZE="10"><B>REF</B></FONT></TD><TD PORT="provider" ALIGN="LEFT" BGCOLOR="white"><FONT POINT-SIZE="12">provider</FONT></TD><TD ALIGN="LEFT" BGCOLOR="white"><FONT COLOR="#61778a" POINT-SIZE="11">User ObjectId</FONT></TD></TR>
+<TR><TD BGCOLOR="#f2f6f9"><FONT COLOR="#167c75" POINT-SIZE="10"><B>REF</B></FONT></TD><TD PORT="customer" ALIGN="LEFT" BGCOLOR="#f2f6f9"><FONT POINT-SIZE="12">customer</FONT></TD><TD ALIGN="LEFT" BGCOLOR="#f2f6f9"><FONT COLOR="#61778a" POINT-SIZE="11">User ObjectId</FONT></TD></TR>
+<TR><TD BGCOLOR="white"><FONT COLOR="#52687a" POINT-SIZE="10"><B> </B></FONT></TD><TD PORT="price" ALIGN="LEFT" BGCOLOR="white"><FONT POINT-SIZE="12">price</FONT></TD><TD ALIGN="LEFT" BGCOLOR="white"><FONT COLOR="#61778a" POINT-SIZE="11">Number</FONT></TD></TR>
+<TR><TD BGCOLOR="#f2f6f9"><FONT COLOR="#52687a" POINT-SIZE="10"><B> </B></FONT></TD><TD PORT="message" ALIGN="LEFT" BGCOLOR="#f2f6f9"><FONT POINT-SIZE="12">message</FONT></TD><TD ALIGN="LEFT" BGCOLOR="#f2f6f9"><FONT COLOR="#61778a" POINT-SIZE="11">String</FONT></TD></TR>
+<TR><TD BGCOLOR="white"><FONT COLOR="#52687a" POINT-SIZE="10"><B> </B></FONT></TD><TD PORT="status" ALIGN="LEFT" BGCOLOR="white"><FONT POINT-SIZE="12">status</FONT></TD><TD ALIGN="LEFT" BGCOLOR="white"><FONT COLOR="#61778a" POINT-SIZE="11">pending | accepted | declined | withdrawn</FONT></TD></TR>
+    </TABLE>>];
+ BOOKING [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="9" COLOR="#d5dfe8">
+    <TR><TD COLSPAN="3" BGCOLOR="#14695f" ALIGN="LEFT"><FONT COLOR="white" POINT-SIZE="17"><B>BOOKING</B></FONT></TD></TR>
+    <TR><TD BGCOLOR="white"><FONT COLOR="#52687a" POINT-SIZE="10"><B>PK</B></FONT></TD><TD PORT="_id" ALIGN="LEFT" BGCOLOR="white"><FONT POINT-SIZE="12">_id</FONT></TD><TD ALIGN="LEFT" BGCOLOR="white"><FONT COLOR="#61778a" POINT-SIZE="11">ObjectId</FONT></TD></TR>
+<TR><TD BGCOLOR="#f2f6f9"><FONT COLOR="#167c75" POINT-SIZE="10"><B>REF</B></FONT></TD><TD PORT="job" ALIGN="LEFT" BGCOLOR="#f2f6f9"><FONT POINT-SIZE="12">job</FONT></TD><TD ALIGN="LEFT" BGCOLOR="#f2f6f9"><FONT COLOR="#61778a" POINT-SIZE="11">Job ObjectId</FONT></TD></TR>
+<TR><TD BGCOLOR="white"><FONT COLOR="#167c75" POINT-SIZE="10"><B>REF</B></FONT></TD><TD PORT="provider" ALIGN="LEFT" BGCOLOR="white"><FONT POINT-SIZE="12">provider</FONT></TD><TD ALIGN="LEFT" BGCOLOR="white"><FONT COLOR="#61778a" POINT-SIZE="11">User ObjectId</FONT></TD></TR>
+<TR><TD BGCOLOR="#f2f6f9"><FONT COLOR="#167c75" POINT-SIZE="10"><B>REF</B></FONT></TD><TD PORT="customer" ALIGN="LEFT" BGCOLOR="#f2f6f9"><FONT POINT-SIZE="12">customer</FONT></TD><TD ALIGN="LEFT" BGCOLOR="#f2f6f9"><FONT COLOR="#61778a" POINT-SIZE="11">User ObjectId</FONT></TD></TR>
+<TR><TD BGCOLOR="white"><FONT COLOR="#52687a" POINT-SIZE="10"><B> </B></FONT></TD><TD PORT="agreedPrice" ALIGN="LEFT" BGCOLOR="white"><FONT POINT-SIZE="12">agreedPrice</FONT></TD><TD ALIGN="LEFT" BGCOLOR="white"><FONT COLOR="#61778a" POINT-SIZE="11">Number</FONT></TD></TR>
+<TR><TD BGCOLOR="#f2f6f9"><FONT COLOR="#52687a" POINT-SIZE="10"><B> </B></FONT></TD><TD PORT="status" ALIGN="LEFT" BGCOLOR="#f2f6f9"><FONT POINT-SIZE="12">status</FONT></TD><TD ALIGN="LEFT" BGCOLOR="#f2f6f9"><FONT COLOR="#61778a" POINT-SIZE="11">pending | accepted | declined | completed</FONT></TD></TR>
+<TR><TD BGCOLOR="white"><FONT COLOR="#167c75" POINT-SIZE="10"><B>REF</B></FONT></TD><TD PORT="hiddenFor" ALIGN="LEFT" BGCOLOR="white"><FONT POINT-SIZE="12">hiddenFor</FONT></TD><TD ALIGN="LEFT" BGCOLOR="white"><FONT COLOR="#61778a" POINT-SIZE="11">User ObjectId[]</FONT></TD></TR>
+    </TABLE>>];
+ REVIEW [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="9" COLOR="#d5dfe8">
+    <TR><TD COLSPAN="3" BGCOLOR="#173c58" ALIGN="LEFT"><FONT COLOR="white" POINT-SIZE="17"><B>REVIEW</B></FONT></TD></TR>
+    <TR><TD BGCOLOR="white"><FONT COLOR="#52687a" POINT-SIZE="10"><B>PK</B></FONT></TD><TD PORT="_id" ALIGN="LEFT" BGCOLOR="white"><FONT POINT-SIZE="12">_id</FONT></TD><TD ALIGN="LEFT" BGCOLOR="white"><FONT COLOR="#61778a" POINT-SIZE="11">ObjectId</FONT></TD></TR>
+<TR><TD BGCOLOR="#f2f6f9"><FONT COLOR="#167c75" POINT-SIZE="10"><B>UK REF</B></FONT></TD><TD PORT="booking" ALIGN="LEFT" BGCOLOR="#f2f6f9"><FONT POINT-SIZE="12">booking</FONT></TD><TD ALIGN="LEFT" BGCOLOR="#f2f6f9"><FONT COLOR="#61778a" POINT-SIZE="11">Booking ObjectId</FONT></TD></TR>
+<TR><TD BGCOLOR="white"><FONT COLOR="#167c75" POINT-SIZE="10"><B>REF</B></FONT></TD><TD PORT="job" ALIGN="LEFT" BGCOLOR="white"><FONT POINT-SIZE="12">job</FONT></TD><TD ALIGN="LEFT" BGCOLOR="white"><FONT COLOR="#61778a" POINT-SIZE="11">Job ObjectId</FONT></TD></TR>
+<TR><TD BGCOLOR="#f2f6f9"><FONT COLOR="#167c75" POINT-SIZE="10"><B>REF</B></FONT></TD><TD PORT="provider" ALIGN="LEFT" BGCOLOR="#f2f6f9"><FONT POINT-SIZE="12">provider</FONT></TD><TD ALIGN="LEFT" BGCOLOR="#f2f6f9"><FONT COLOR="#61778a" POINT-SIZE="11">User ObjectId</FONT></TD></TR>
+<TR><TD BGCOLOR="white"><FONT COLOR="#167c75" POINT-SIZE="10"><B>REF</B></FONT></TD><TD PORT="customer" ALIGN="LEFT" BGCOLOR="white"><FONT POINT-SIZE="12">customer</FONT></TD><TD ALIGN="LEFT" BGCOLOR="white"><FONT COLOR="#61778a" POINT-SIZE="11">User ObjectId</FONT></TD></TR>
+<TR><TD BGCOLOR="#f2f6f9"><FONT COLOR="#52687a" POINT-SIZE="10"><B> </B></FONT></TD><TD PORT="rating" ALIGN="LEFT" BGCOLOR="#f2f6f9"><FONT POINT-SIZE="12">rating</FONT></TD><TD ALIGN="LEFT" BGCOLOR="#f2f6f9"><FONT COLOR="#61778a" POINT-SIZE="11">Number from 1 to 5</FONT></TD></TR>
+<TR><TD BGCOLOR="white"><FONT COLOR="#52687a" POINT-SIZE="10"><B> </B></FONT></TD><TD PORT="comment" ALIGN="LEFT" BGCOLOR="white"><FONT POINT-SIZE="12">comment</FONT></TD><TD ALIGN="LEFT" BGCOLOR="white"><FONT COLOR="#61778a" POINT-SIZE="11">String</FONT></TD></TR>
+    </TABLE>>];
+ MESSAGE [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="9" COLOR="#d5dfe8">
+    <TR><TD COLSPAN="3" BGCOLOR="#173c58" ALIGN="LEFT"><FONT COLOR="white" POINT-SIZE="17"><B>MESSAGE</B></FONT></TD></TR>
+    <TR><TD BGCOLOR="white"><FONT COLOR="#52687a" POINT-SIZE="10"><B>PK</B></FONT></TD><TD PORT="_id" ALIGN="LEFT" BGCOLOR="white"><FONT POINT-SIZE="12">_id</FONT></TD><TD ALIGN="LEFT" BGCOLOR="white"><FONT COLOR="#61778a" POINT-SIZE="11">ObjectId</FONT></TD></TR>
+<TR><TD BGCOLOR="#f2f6f9"><FONT COLOR="#167c75" POINT-SIZE="10"><B>REF</B></FONT></TD><TD PORT="booking" ALIGN="LEFT" BGCOLOR="#f2f6f9"><FONT POINT-SIZE="12">booking</FONT></TD><TD ALIGN="LEFT" BGCOLOR="#f2f6f9"><FONT COLOR="#61778a" POINT-SIZE="11">Booking ObjectId</FONT></TD></TR>
+<TR><TD BGCOLOR="white"><FONT COLOR="#167c75" POINT-SIZE="10"><B>REF</B></FONT></TD><TD PORT="sender" ALIGN="LEFT" BGCOLOR="white"><FONT POINT-SIZE="12">sender</FONT></TD><TD ALIGN="LEFT" BGCOLOR="white"><FONT COLOR="#61778a" POINT-SIZE="11">User ObjectId</FONT></TD></TR>
+<TR><TD BGCOLOR="#f2f6f9"><FONT COLOR="#52687a" POINT-SIZE="10"><B> </B></FONT></TD><TD PORT="text" ALIGN="LEFT" BGCOLOR="#f2f6f9"><FONT POINT-SIZE="12">text</FONT></TD><TD ALIGN="LEFT" BGCOLOR="#f2f6f9"><FONT COLOR="#61778a" POINT-SIZE="11">String</FONT></TD></TR>
+<TR><TD BGCOLOR="white"><FONT COLOR="#52687a" POINT-SIZE="10"><B> </B></FONT></TD><TD PORT="read" ALIGN="LEFT" BGCOLOR="white"><FONT POINT-SIZE="12">read</FONT></TD><TD ALIGN="LEFT" BGCOLOR="white"><FONT COLOR="#61778a" POINT-SIZE="11">Boolean</FONT></TD></TR>
+    </TABLE>>];
+ NOTIFICATION [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="9" COLOR="#d5dfe8">
+    <TR><TD COLSPAN="3" BGCOLOR="#173c58" ALIGN="LEFT"><FONT COLOR="white" POINT-SIZE="17"><B>NOTIFICATION</B></FONT></TD></TR>
+    <TR><TD BGCOLOR="white"><FONT COLOR="#52687a" POINT-SIZE="10"><B>PK</B></FONT></TD><TD PORT="_id" ALIGN="LEFT" BGCOLOR="white"><FONT POINT-SIZE="12">_id</FONT></TD><TD ALIGN="LEFT" BGCOLOR="white"><FONT COLOR="#61778a" POINT-SIZE="11">ObjectId</FONT></TD></TR>
+<TR><TD BGCOLOR="#f2f6f9"><FONT COLOR="#167c75" POINT-SIZE="10"><B>REF</B></FONT></TD><TD PORT="recipient" ALIGN="LEFT" BGCOLOR="#f2f6f9"><FONT POINT-SIZE="12">recipient</FONT></TD><TD ALIGN="LEFT" BGCOLOR="#f2f6f9"><FONT COLOR="#61778a" POINT-SIZE="11">User ObjectId</FONT></TD></TR>
+<TR><TD BGCOLOR="white"><FONT COLOR="#167c75" POINT-SIZE="10"><B>REF optional</B></FONT></TD><TD PORT="sender" ALIGN="LEFT" BGCOLOR="white"><FONT POINT-SIZE="12">sender</FONT></TD><TD ALIGN="LEFT" BGCOLOR="white"><FONT COLOR="#61778a" POINT-SIZE="11">User ObjectId</FONT></TD></TR>
+<TR><TD BGCOLOR="#f2f6f9"><FONT COLOR="#52687a" POINT-SIZE="10"><B> </B></FONT></TD><TD PORT="type" ALIGN="LEFT" BGCOLOR="#f2f6f9"><FONT POINT-SIZE="12">type</FONT></TD><TD ALIGN="LEFT" BGCOLOR="#f2f6f9"><FONT COLOR="#61778a" POINT-SIZE="11">String enum</FONT></TD></TR>
+<TR><TD BGCOLOR="white"><FONT COLOR="#52687a" POINT-SIZE="10"><B> </B></FONT></TD><TD PORT="title" ALIGN="LEFT" BGCOLOR="white"><FONT POINT-SIZE="12">title</FONT></TD><TD ALIGN="LEFT" BGCOLOR="white"><FONT COLOR="#61778a" POINT-SIZE="11">String</FONT></TD></TR>
+<TR><TD BGCOLOR="#f2f6f9"><FONT COLOR="#52687a" POINT-SIZE="10"><B> </B></FONT></TD><TD PORT="message" ALIGN="LEFT" BGCOLOR="#f2f6f9"><FONT POINT-SIZE="12">message</FONT></TD><TD ALIGN="LEFT" BGCOLOR="#f2f6f9"><FONT COLOR="#61778a" POINT-SIZE="11">String</FONT></TD></TR>
+<TR><TD BGCOLOR="white"><FONT COLOR="#52687a" POINT-SIZE="10"><B> </B></FONT></TD><TD PORT="link" ALIGN="LEFT" BGCOLOR="white"><FONT POINT-SIZE="12">link</FONT></TD><TD ALIGN="LEFT" BGCOLOR="white"><FONT COLOR="#61778a" POINT-SIZE="11">String</FONT></TD></TR>
+<TR><TD BGCOLOR="#f2f6f9"><FONT COLOR="#52687a" POINT-SIZE="10"><B> </B></FONT></TD><TD PORT="read" ALIGN="LEFT" BGCOLOR="#f2f6f9"><FONT POINT-SIZE="12">read</FONT></TD><TD ALIGN="LEFT" BGCOLOR="#f2f6f9"><FONT COLOR="#61778a" POINT-SIZE="11">Boolean</FONT></TD></TR>
+    </TABLE>>];
+ USER -> JOB [label="posts as customer", weight=5];
+ JOB -> QUOTE [label="receives", weight=3];
+ JOB -> BOOKING [label="has requests and bookings", weight=4];
+ BOOKING -> MESSAGE [label="contains", weight=4];
+ BOOKING -> REVIEW [label="receives at most one", arrowhead=teeodot, weight=5];
+ JOB -> REVIEW [label="concerns", constraint=false];
+ USER -> QUOTE [label="provider submits / customer receives", color="#b5c6d2", constraint=false];
+ USER -> BOOKING [label="customer / provider participates", color="#b5c6d2", constraint=false];
+ USER -> REVIEW [label="customer writes / provider receives", color="#b5c6d2", constraint=false];
+ USER -> MESSAGE [label="sender writes", color="#b5c6d2", constraint=false];
+ USER -> NOTIFICATION [label="recipient receives", weight=1];
+ USER -> NOTIFICATION [label="sender triggers (optional)", arrowtail=teeodot, constraint=false, color="#b5c6d2"];
+ legend [label=<<TABLE BORDER="0" CELLBORDER="0" CELLPADDING="5"><TR><TD ALIGN="LEFT"><FONT POINT-SIZE="12"><B>Reading the diagram</B></FONT></TD></TR><TR><TD ALIGN="LEFT"><FONT POINT-SIZE="11">PK primary key  |  UK unique index  |  REF application reference</FONT></TD></TR><TR><TD ALIGN="LEFT"><FONT POINT-SIZE="11">Crow foot with circle = zero or many  |  Bar with circle = zero or one</FONT></TD></TR><TR><TD ALIGN="LEFT"><FONT POINT-SIZE="11">Every collection includes createdAt and updatedAt timestamps.</FONT></TD></TR><TR><TD ALIGN="LEFT"><FONT POINT-SIZE="11">User roles share one collection. Role-specific links are combined for readability.</FONT></TD></TR><TR><TD ALIGN="LEFT"><FONT POINT-SIZE="11">hiddenFor contains user references for per-user visibility; it is not a deletion.</FONT></TD></TR><TR><TD ALIGN="LEFT"><FONT POINT-SIZE="11">References are checked in application code, not database-enforced foreign keys.</FONT></TD></TR></TABLE>>];
+ {rank=same; USER; legend;}
+ USER -> legend [style=invis];
+}

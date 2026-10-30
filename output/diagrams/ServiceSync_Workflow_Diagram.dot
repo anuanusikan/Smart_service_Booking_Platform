@@ -1,0 +1,77 @@
+digraph ServiceSyncWorkflow {
+ graph [rankdir=TB, bgcolor="white", pad=".5", nodesep=".5", ranksep=".55", splines=polyline, outputorder=edgesfirst,
+ label="ServiceSync  |  Service booking workflow
+Current quote-based customer and provider journey", labelloc=t, labeljust=l, fontsize=25, fontcolor="#122e44", fontname="Arial"];
+ node [shape=box, style="rounded,filled", fillcolor="#f2f6fb", color="#c9d7e3", fontcolor="#173c58", fontname="Arial", fontsize=12, margin=".22,.16", penwidth=1.2];
+ edge [fontname="Arial", fontsize=11, color="#6a8397", fontcolor="#456276", arrowsize=.8, penwidth=1.5];
+ start [shape=oval, label="START
+Register or sign in", fillcolor="#173c58", fontcolor=white];
+ job [label="CUSTOMER
+Post job with budget, location,
+optional appointment and photos"];
+ open [label="PLATFORM
+Validate and save job
+Job status: OPEN", fillcolor="#e8f5f1", color="#abd6ca"];
+ browse [label="PROVIDER
+Browse matched jobs
+Search, filter, sort and inspect photos"];
+ quote [label="PROVIDER
+Submit price and optional message
+Quote status: PENDING"];
+ compare [label="CUSTOMER
+Compare quotes and view
+provider profiles and reviews"];
+ choose [shape=diamond, style=filled, fillcolor="#fff5df", color="#d6b66a", label="Accept this
+quote?", margin=.12];
+ decline [label="CUSTOMER
+Decline quote
+Other pending offers remain available", fillcolor="#fff1f1", color="#e4baba"];
+ withdraw [label="PROVIDER
+May withdraw a pending quote
+Quote status: WITHDRAWN", fillcolor="#f7f8fa"];
+ atomic [label="PLATFORM  |  ONE TRANSACTION
+Claim the open job and accept selected quote
+Create booking with agreed quote price
+Decline competing pending quotes and requests", fillcolor="#173c58", fontcolor=white, color="#173c58"];
+ accepted [label="BOOKING ACCEPTED
+Job status: ASSIGNED
+Appointment appears in provider schedule", fillcolor="#e8f5f1", color="#abd6ca"];
+ work [label="CUSTOMER AND PROVIDER
+Exchange booking messages
+Arrange appointment and perform service"];
+ complete [label="CUSTOMER
+Mark accepted booking as completed"];
+ history [label="PLATFORM
+Job and booking: COMPLETED
+Move booking immediately to HISTORY
+Include agreed price in provider earnings", fillcolor="#e8f5f1", color="#abd6ca"];
+ review [shape=diamond, style=filled, fillcolor="#fff5df", color="#d6b66a", label="Customer wants
+to review?", margin=.12];
+ saveReview [label="CUSTOMER
+Submit rating and optional comment
+One review per completed booking"];
+ rating [label="PLATFORM
+Save review and update provider average
+Show REVIEWED on booking", fillcolor="#e8f5f1", color="#abd6ca"];
+ later [label="CUSTOMER
+Skip review or choose Maybe later
+Booking remains completed"];
+ end [shape=oval, label="FINISHED
+Keep history or hide own record
+Reviews and earnings are preserved", fillcolor="#173c58", fontcolor=white];
+ start -> job -> open -> browse -> quote -> compare -> choose;
+ choose -> atomic [label="Yes"];
+ choose -> decline [label="No"];
+ decline -> compare [label="Review another offer", constraint=false];
+ quote -> withdraw [style=dashed, label="Before acceptance", constraint=false];
+ atomic -> accepted -> work -> complete -> history -> review;
+ review -> saveReview [label="Yes"];
+ saveReview -> rating -> end;
+ review -> later [label="No / later"];
+ later -> end;
+ {rank=same; saveReview; later;}
+ {rank=same; choose; decline;}
+ note [shape=note, style=filled, fillcolor="#f7f9fc", color="#d5dfe8", fontsize=11,
+ label="WORKFLOW RULES\l- Validation and role / ownership checks apply to protected actions.\l- Booking and quote notifications are separate from chat alerts.\l- Open jobs can be edited or soft-deleted by their customer.\l- Pending direct requests remain supported by the API for older records.\l- Reviews are optional; removing history does not require a review.\l- Earnings are summaries, not online payments.\l"];
+ end -> note [style=invis];
+}
